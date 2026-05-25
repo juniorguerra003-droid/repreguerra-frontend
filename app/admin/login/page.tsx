@@ -20,14 +20,15 @@ export default function LoginAdmin() {
             });
 
             const data = await respuesta.json();
+            console.log("🚨 ESTRUCTURA REAL DEL BACKEND:", data);
 
             if (respuesta.ok) {
                 // ¡Éxito! Guardamos el token de seguridad en la memoria del navegador
-                localStorage.setItem("adminToken", data.token);
+                localStorage.setItem("adminToken", data.data.token);
                 alert("🔑 ¡Acceso concedido! Token guardado con éxito.");
 
                 // Redirigimos automáticamente al panel de crear productos
-                window.location.href = "/admin/productos/nuevo";
+                window.location.href = "/admin/productos";
             } else {
                 alert("Acceso denegado: " + (data.message || "Credenciales incorrectas"));
             }
