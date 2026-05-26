@@ -12,44 +12,64 @@ interface Producto {
 }
 
 export default function AdminDashboard() {
+    // 1. Ampliamos el estado para incluir las nuevas métricas de pedidos
     const [stats, setStats] = useState({
         totalProductos: 0,
         totalCategorias: 0,
         valorTotal: 0,
-        bajoStock: 0
+        bajoStock: 0,
+        // Nuevas métricas financieras
+        ingresosTotales: 0,
+        pedidosTotales: 0,
+        tasaCompletados: 0
     });
+    
     const [productosBajoStock, setProductosBajoStock] = useState<Producto[]>([]);
     const [cargando, setCargando] = useState(true);
 
     useEffect(() => {
         const cargarMetricas = async () => {
             try {
-                // Traemos los datos de tus APIs
+                // Traemos los datos de productos y categorías (Tu código original)
                 const resProd = await fetch("http://localhost:3000/api/products");
                 const dataProd = await resProd.json();
                 
                 const resCat = await fetch("http://localhost:3000/api/categories");
                 const dataCat = await resCat.json();
 
+                // 👇 NUEVO: Traemos los datos de PEDIDOS usando tu Token de Admin
+                const token = localStorage.getItem("adminToken") || "";
+                const resPedidos = await fetch("http://localhost:3000/api/orders/admin/stats", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const dataPedidos = await resPedidos.json();
+
                 if (dataProd.success && dataCat.success) {
                     const productos: Producto[] = dataProd.data;
                     const categorias = dataCat.data;
 
-                    // El motor de cálculo en tiempo real
                     const totalProd = productos.length;
                     const totalCat = categorias.length;
-                    
-                    // Sumamos (Precio x Stock) de todos los productos
                     const valorInventario = productos.reduce((acc, p) => acc + (p.precio * p.stock), 0);
-                    
-                    // Filtramos los que tienen 5 o menos en stock
                     const stockCritico = productos.filter(p => p.stock <= 5);
 
+                    // Calculamos la tasa de pedidos completados
+                    let tasaCompletados = 0;
+                    if (dataPedidos.success && dataPedidos.data.pedidosTotales > 0) {
+                        const cantidadCompletados = dataPedidos.data.resumenEstados.find((e: any) => e.estado === 'COMPLETADO')?.cantidad || 0;
+                        tasaCompletados = Math.round((cantidadCompletados / dataPedidos.data.pedidosTotales) * 100);
+                    }
+
+                    // Actualizamos el estado unificado
                     setStats({
                         totalProductos: totalProd,
                         totalCategorias: totalCat,
                         valorTotal: valorInventario,
-                        bajoStock: stockCritico.length
+                        bajoStock: stockCritico.length,
+                        // Añadimos las métricas financieras
+                        ingresosTotales: dataPedidos.success ? dataPedidos.data.ingresosTotales : 0,
+                        pedidosTotales: dataPedidos.success ? dataPedidos.data.pedidosTotales : 0,
+                        tasaCompletados: tasaCompletados
                     });
 
                     setProductosBajoStock(stockCritico);
@@ -76,18 +96,43 @@ export default function AdminDashboard() {
                     <p className="text-gray-500 mt-2 font-medium">Bienvenido al sistema de gestión de Repreguerra.</p>
                 </div>
                 
-                {/* Botones de navegación rápida */}
+                {/* Botones de navegación rápida (AHORA CON BOTÓN DE PEDIDOS) */}
                 <div className="flex gap-4">
+                    <Link href="/admin/pedidos" className="bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-emerald-700 transition shadow-md">
+                        📦 Ver Pedidos
+                    </Link>
                     <Link href="/admin/categorias" className="bg-gray-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-900 transition shadow-md">
                         📂 Categorías
                     </Link>
                     <Link href="/admin/productos" className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition shadow-md">
-                        📦 Productos
+                        🛒 Productos
                     </Link>
                 </div>
             </div>
 
-            {/* TARJETAS DE MÉTRICAS (KPIs) */}
+            {/* SECCIÓN 1: MÉTRICAS DE VENTAS Y FINANZAS (NUEVO) */}
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">📊 Rendimiento Comercial</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-emerald-500">
+                    <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wider">Ingresos Totales</h3>
+                    <p className="text-4xl font-extrabold text-gray-900 mt-2">
+                        S/ {stats.ingresosTotales.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                </div>
+                
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+                    <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wider">Total de Pedidos</h3>
+                    <p className="text-4xl font-extrabold text-gray-900 mt-2">{stats.pedidosTotales}</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-purple-500">
+                    <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wider">Tasa de Completados</h3>
+                    <p className="text-4xl font-extrabold text-gray-900 mt-2">{stats.tasaCompletados}%</p>
+                </div>
+            </div>
+
+            {/* SECCIÓN 2: MÉTRICAS DE INVENTARIO (TU CÓDIGO ORIGINAL) */}
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">📦 Estado del Inventario</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
                     <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Productos</h3>
@@ -112,7 +157,7 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* TABLA DE ALERTAS DE STOCK */}
+            {/* TABLA DE ALERTAS DE STOCK (TU CÓDIGO ORIGINAL INTACTO) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-red-50 px-6 py-4 border-b border-gray-200">
                     <h2 className="text-lg font-bold text-red-800">⚠️ Productos que necesitan reposición (Stock ≤ 5)</h2>
