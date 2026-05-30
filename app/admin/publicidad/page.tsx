@@ -34,7 +34,7 @@ const supabase = createClient(
 );
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const BUCKET = 'publicidad';
+const BUCKET = 'banners';
 
 interface Banner {
   id: string;

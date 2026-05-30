@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import Navbar from "@/components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Repreguerra – Tienda Oficial",
-  description: "Encuentra los mejores productos en la tienda oficial de Repreguerra.",
+  title: {
+    template: '%s | Repreguerra',
+    default: 'Repreguerra – Tienda Oficial',
+  },
+  description: "Encuentra los mejores equipos y tecnología en la tienda oficial de Repreguerra. Garantía real y envíos a todo el Perú.",
+  openGraph: {
+    title: 'Repreguerra – Tienda Oficial',
+    description: 'Equipos y tecnología con garantía real y envío a todo el Perú.',
+    url: 'https://repreguerra.pe', // Replace with real domain when deployed
+    siteName: 'Repreguerra',
+    images: [
+      {
+        url: '/og-image.jpg', // Should be added to public/ later
+        width: 1200,
+        height: 630,
+        alt: 'Repreguerra – Tienda Oficial',
+      },
+    ],
+    locale: 'es_PE',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -31,12 +51,14 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {/*
-         * CartProvider vive en el Server Component RootLayout.
-         * Internamente tiene 'use client', por lo que React lo hidrata
-         * solo en el cliente, sin provocar SSR mismatches.
+         * AuthProvider > CartProvider > Navbar + children.
+         * Navbar se auto-oculta en rutas /admin vía usePathname().
          */}
         <AuthProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <Navbar />
+            {children}
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

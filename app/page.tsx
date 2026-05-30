@@ -8,7 +8,7 @@
 
 import type { Metadata } from 'next';
 import Catalog from '@/components/Catalog';
-import HeroCarousel, { type Banner } from '@/components/HeroCarousel';
+import type { Banner } from '@/components/HeroCarousel';
 import type { Producto, Categoria, ApiResponse } from '@/types/store';
 
 export const metadata: Metadata = {
@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     title: 'Repreguerra – Tienda Oficial',
     description: 'Equipos y tecnología con garantía real y envío a todo el Perú.',
     type: 'website',
+    images: ['/og-image.jpg'],
   },
 };
 
@@ -68,10 +69,10 @@ export default async function StorePage() {
   ]);
 
   return (
-    <Catalog 
-      productos={productos} 
-      categorias={categorias} 
-      banners={banners} 
+    <Catalog
+      productos={productos}
+      categorias={categorias}
+      banners={banners}
     />
   );
 }

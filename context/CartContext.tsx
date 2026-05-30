@@ -27,7 +27,7 @@ interface CartState {
 }
 
 type CartAction =
-  | { type: 'ADD_ITEM'; payload: Omit<CartItem, 'cantidad'> }
+  | { type: 'ADD_ITEM'; payload: Omit<CartItem, 'cantidad'> & { cantidad?: number } }
   | { type: 'REMOVE_ITEM'; payload: { id: string } }
   | { type: 'UPDATE_QUANTITY'; payload: { id: string; cantidad: number } }
   | { type: 'CLEAR_CART' }
@@ -38,8 +38,8 @@ interface CartContextValue {
   items: CartItem[];
   /** true si el carrito terminó de hidratarse desde localStorage */
   isHydrated: boolean;
-  /** Agrega un artículo o incrementa su cantidad si ya existe */
-  addItem: (item: Omit<CartItem, 'cantidad'>) => void;
+  /** Agrega un artículo o incrementa su cantidad si ya existe. Opcionalmente acepta cantidad a sumar. */
+  addItem: (item: Omit<CartItem, 'cantidad'> & { cantidad?: number }) => void;
   /** Elimina completamente un artículo del carrito */
   removeItem: (id: string) => void;
   /** Cambia la cantidad de un artículo (si llega a 0 lo elimina) */
@@ -64,6 +64,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { items: action.payload };
 
     case 'ADD_ITEM': {
+      const cantidadToAdd = action.payload.cantidad ?? 1;
       const existingIndex = state.items.findIndex(
         (item) => item.id === action.payload.id
       );
@@ -71,14 +72,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         // Incrementa la cantidad del artículo existente
         const updatedItems = state.items.map((item, idx) =>
           idx === existingIndex
-            ? { ...item, cantidad: item.cantidad + 1 }
+            ? { ...item, cantidad: item.cantidad + cantidadToAdd }
             : item
         );
         return { items: updatedItems };
       }
-      // Artículo nuevo → cantidad inicial: 1
       return {
-        items: [...state.items, { ...action.payload, cantidad: 1 }],
+        items: [...state.items, { ...action.payload, cantidad: cantidadToAdd }],
       };
     }
 
@@ -161,7 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ── Acciones memoizadas ──────────────────────
 
   const addItem = useCallback(
-    (item: Omit<CartItem, 'cantidad'>) =>
+    (item: Omit<CartItem, 'cantidad'> & { cantidad?: number }) =>
       dispatch({ type: 'ADD_ITEM', payload: item }),
     []
   );

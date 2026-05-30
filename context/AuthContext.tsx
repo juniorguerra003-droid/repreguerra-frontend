@@ -29,6 +29,8 @@ export interface ClientUser {
   nombre: string;
   email: string;
   rol: string;
+  telefono?: string;
+  direccion_defecto?: string;
 }
 
 interface AuthState {
@@ -40,6 +42,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (token: string, user: ClientUser) => void;
   logout: () => void;
+  updateUser: (updates: Partial<ClientUser>) => void;
 }
 
 // ─────────────────────────────────────────────
@@ -79,8 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, token: null, isHydrated: true });
   }, []);
 
+  const updateUser = useCallback((updates: Partial<ClientUser>) => {
+    setState((prev) => {
+      if (!prev.user) return prev;
+      const newUser = { ...prev.user, ...updates };
+      localStorage.setItem('clientUser', JSON.stringify(newUser));
+      return { ...prev, user: newUser };
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

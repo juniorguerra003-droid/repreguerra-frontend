@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 // ─────────────────────────────────────────────
 // Supabase client (solo browser, credenciales públicas)
@@ -343,12 +344,21 @@ function FileUploader({ onUploadComplete, onUploadStart, onUploadEnd }: FileUplo
 // ─────────────────────────────────────────────
 
 export default function CheckoutView() {
-  const { items, totalPrice, clearCart, isHydrated } = useCart();
+  const { items, totalPrice, clearCart, isHydrated: cartHydrated } = useCart();
+  const { user, isHydrated: authHydrated } = useAuth();
 
   const [form, setForm] = useState<FormState>({
     direccion_envio: '',
     metodo_pago: 'YAPE',
   });
+
+  // Auto-completar dirección si el usuario tiene una por defecto
+  useEffect(() => {
+    if (user?.direccion_defecto && !form.direccion_envio) {
+      setForm((f) => ({ ...f, direccion_envio: user.direccion_defecto! }));
+    }
+  }, [user?.direccion_defecto]);
+
   const [comprobanteUrl, setComprobanteUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -359,7 +369,7 @@ export default function CheckoutView() {
 
   const needsComprobante = REQUIRES_COMPROBANTE.includes(form.metodo_pago);
 
-  if (!isHydrated) {
+  if (!cartHydrated || !authHydrated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="animate-spin text-blue-500" size={36} />
