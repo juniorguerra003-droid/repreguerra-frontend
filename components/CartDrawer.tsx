@@ -156,14 +156,16 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
               href="/checkout"
               onClick={onClose}
               id="cart-go-to-checkout"
-              className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition shadow-md shadow-blue-200 text-sm"
+              className="block w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl transition shadow-md shadow-blue-200 text-sm"
             >
-              Ir a Pagar <ChevronRight size={18} />
+              <div className="flex items-center justify-center gap-2 w-full h-full">
+                Ir a Pagar <ChevronRight size={18} />
+              </div>
             </Link>
 
             <button
               onClick={clearCart}
-              className="w-full text-center text-xs text-gray-400 hover:text-red-500 transition font-semibold"
+              className="block w-full text-center text-xs text-gray-400 hover:text-red-500 transition font-semibold py-2"
             >
               Vaciar carrito
             </button>

@@ -345,7 +345,7 @@ function FileUploader({ onUploadComplete, onUploadStart, onUploadEnd }: FileUplo
 
 export default function CheckoutView() {
   const { items, totalPrice, clearCart, isHydrated: cartHydrated } = useCart();
-  const { user, isHydrated: authHydrated } = useAuth();
+  const { user, token, isHydrated: authHydrated } = useAuth();
 
   const [form, setForm] = useState<FormState>({
     direccion_envio: '',
@@ -380,6 +380,36 @@ export default function CheckoutView() {
   if (items.length === 0 && !successData) return <EmptyCartMessage />;
   if (successData) return <OrderSuccess order={successData} />;
 
+  if (!user && !successData) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center gap-6 px-4">
+        <div className="w-24 h-24 rounded-full bg-orange-50 flex items-center justify-center">
+          <AlertCircle size={40} className="text-orange-400" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Inicia sesión para continuar</h2>
+          <p className="text-gray-500 max-w-sm mx-auto">
+            Por seguridad, necesitas una cuenta para poder realizar compras y hacer seguimiento a tus pedidos.
+          </p>
+        </div>
+        <div className="flex gap-4 mt-2">
+          <Link
+            href="/login"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-xl transition shadow-md shadow-blue-200"
+          >
+            Iniciar Sesión
+          </Link>
+          <Link
+            href="/registro"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-8 py-3.5 rounded-xl transition"
+          >
+            Crear Cuenta
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   function validate(): boolean {
     const newErrors: FormErrors = {};
     if (form.direccion_envio.trim().length < 5) {
@@ -408,9 +438,12 @@ export default function CheckoutView() {
     if (comprobanteUrl) payload.comprobante_url = comprobanteUrl;
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`${API_BASE}/api/orders/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       });
       const data = await res.json();

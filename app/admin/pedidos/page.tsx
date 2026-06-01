@@ -292,7 +292,8 @@ export default function PedidosAdmin() {
     const cargarPedidos = async () => {
       try {
         const token = localStorage.getItem("adminToken") || "";
-        const res = await fetch("http://localhost:3000/api/orders/admin/all", {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+        const res = await fetch(`${API_BASE}/api/orders/admin/all`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -313,7 +314,8 @@ export default function PedidosAdmin() {
   const actualizarEstado = async (id: string, nuevoEstado: string) => {
     try {
       const token = localStorage.getItem("adminToken") || "";
-      const res = await fetch(`http://localhost:3000/api/orders/admin/${id}/status`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+      const res = await fetch(`${API_BASE}/api/orders/admin/${id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

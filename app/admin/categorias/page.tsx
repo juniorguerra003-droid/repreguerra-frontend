@@ -30,7 +30,7 @@ export default function ListaCategorias() {
                     setCategorias(data.data);
                 }
             } catch (error) {
-                console.error("Error al cargar categorías.");
+                console.warn("Error al cargar categorías.");
             } finally {
                 setCargando(false);
             }

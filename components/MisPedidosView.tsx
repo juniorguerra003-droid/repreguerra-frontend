@@ -21,6 +21,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import OrderTimeline from '@/components/OrderTimeline';
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -164,6 +165,12 @@ function OrderCard({ order }: { order: Order }) {
       {/* Detalles expandibles */}
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/50">
+          
+          {/* Trazabilidad (Timeline) */}
+          <div className="px-5 py-2 border-b border-gray-100 bg-white">
+            <OrderTimeline status={order.estado_pedido} />
+          </div>
+
           {/* Info de envío y pago */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-5 py-4 border-b border-gray-100">
             <div className="flex items-start gap-2.5">

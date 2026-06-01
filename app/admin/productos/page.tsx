@@ -53,6 +53,7 @@ export default function ListaProductos() {
     const [mostrarBulkModal, setMostrarBulkModal] = useState(false);
     const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
     const [subiendoImagen, setSubiendoImagen] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         nombre: "",
@@ -81,8 +82,16 @@ export default function ListaProductos() {
                 const resMarcas = await fetch(`${API_URL}/api/brands`);
                 const dataMarcas = await resMarcas.json();
                 if (dataMarcas.success) setMarcas(dataMarcas.data);
+
+                try {
+                    const userStr = localStorage.getItem('adminUser');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        setUserRole(user.rol || null);
+                    }
+                } catch (e) {}
             } catch (error) {
-                console.error("Error al cargar datos.");
+                console.warn("Fallo de red al cargar datos.");
             } finally {
                 setCargando(false);
             }
@@ -321,13 +330,15 @@ export default function ListaProductos() {
                                             >
                                                 <Edit size={16} />
                                             </button>
-                                            <button 
-                                                onClick={() => eliminarProducto(p.id)} 
-                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {userRole === 'SUPER_ADMIN' && (
+                                                <button 
+                                                    onClick={() => eliminarProducto(p.id)} 
+                                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

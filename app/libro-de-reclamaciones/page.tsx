@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Send, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+
 export default function LibroReclamaciones() {
   const [enviado, setEnviado] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -33,7 +35,7 @@ export default function LibroReclamaciones() {
 
     try {
       // Ajusta la URL a la ruta de tu API real
-      const response = await fetch('http://localhost:3000/api/complaints', {
+      const response = await fetch(`${API_BASE}/api/complaints`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

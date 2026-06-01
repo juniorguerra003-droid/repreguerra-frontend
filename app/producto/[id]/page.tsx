@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight, Home, ShoppingBag, Tag, Info, Package } from 'lucide-react';
+import { ChevronRight, Home, ShoppingBag, Tag, Info, ShieldCheck, Truck, Store } from 'lucide-react';
 import type { Producto, ApiResponse } from '@/types/store';
 import AddToCartAction from '@/components/AddToCartAction';
+import ProductCard from '@/components/ProductCard';
 
 export const revalidate = 60; // SSR + ISR cada 60s
 
@@ -19,6 +20,20 @@ async function fetchProducto(id: string): Promise<Producto | null> {
     return json.success ? json.data : null;
   } catch {
     return null;
+  }
+}
+
+async function fetchRelatedProducts(categoryId: string, excludeId: string): Promise<Producto[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/products?categoryId=${categoryId}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return [];
+    const json: ApiResponse<Producto[]> = await res.json();
+    if (!json.success) return [];
+    return json.data.filter(p => p.id !== excludeId).slice(0, 4);
+  } catch {
+    return [];
   }
 }
 
@@ -48,13 +63,15 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
     notFound();
   }
 
+  const relatedProducts = await fetchRelatedProducts(producto.categoryId, producto.id);
+  
   const precio = parseFloat(producto.precio);
   const esUltimasUnidades = producto.stock > 0 && producto.stock <= 5;
 
   return (
-    <main className="bg-gray-50 min-h-[calc(100vh-64px)] pb-24">
+    <main className="bg-gray-50/50 min-h-[calc(100vh-64px)] pb-24">
       {/* ── Breadcrumbs ── */}
-      <div className="bg-white border-b border-gray-200 py-4">
+      <div className="bg-white border-b border-gray-200 py-3 mb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium text-gray-500 overflow-x-auto whitespace-nowrap pb-1">
             <Link href="/" className="hover:text-blue-600 transition flex items-center gap-1.5">
@@ -76,97 +93,129 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* ── Producto Grid ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 md:mt-12">
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
           
-          {/* Izquierda: Imagen */}
-          <div className="md:w-1/2 p-8 md:p-12 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100/50 relative border-r border-gray-100">
-            {/* Badges Flotantes sobre la imagen */}
-            <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
-              <span className="bg-white text-gray-800 font-black text-xs px-3 py-1.5 rounded-full shadow-sm border border-gray-200 flex items-center gap-1.5">
-                <Tag size={12} className="text-blue-600" />
-                {producto.category.nombre}
-              </span>
-              {esUltimasUnidades && (
-                <span className="bg-amber-500 text-white font-bold text-xs px-3 py-1.5 rounded-full shadow-sm shadow-amber-200 animate-pulse">
-                  ¡Últimas {producto.stock} unidades!
+          {/* ── Izquierda: Imagen y Detalles (Scrollable) ── */}
+          <div className="w-full lg:w-2/3 flex flex-col gap-8">
+            
+            {/* Contenedor Principal Imagen */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col md:flex-row p-6 md:p-10 relative group">
+              {/* Badges Flotantes */}
+              <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
+                <span className="bg-blue-50 text-blue-700 font-black text-xs px-3 py-1.5 rounded-full shadow-sm border border-blue-100 flex items-center gap-1.5">
+                  <Tag size={12} className="text-blue-600" />
+                  {producto.category.nombre}
                 </span>
-              )}
+                {esUltimasUnidades && (
+                  <span className="bg-red-500 text-white font-bold text-xs px-3 py-1.5 rounded-full shadow-sm animate-pulse">
+                    ¡Últimas {producto.stock}!
+                  </span>
+                )}
+              </div>
+
+              <div className="relative w-full aspect-square flex items-center justify-center bg-white rounded-2xl">
+                {producto.imagen_url ? (
+                  <img
+                    src={producto.imagen_url}
+                    alt={producto.nombre}
+                    className="object-contain w-[90%] h-[90%] drop-shadow-xl group-hover:scale-110 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-gray-300 gap-4">
+                    <ShoppingBag size={80} strokeWidth={0.5} />
+                    <span className="text-sm font-medium">Sin imagen</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="relative w-full aspect-square max-w-md flex items-center justify-center">
-              {producto.imagen_url ? (
-                <img
-                  src={producto.imagen_url}
-                  alt={producto.nombre}
-                  className="object-contain w-full h-full drop-shadow-2xl hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-300 gap-4">
-                  <ShoppingBag size={80} strokeWidth={0.5} />
-                  <span className="text-sm font-medium">Sin imagen disponible</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Derecha: Detalles */}
-          <div className="md:w-1/2 p-8 md:p-12 flex flex-col">
-            <div className="mb-2">
-              <p className="text-xs font-mono text-gray-400 tracking-widest uppercase mb-2">
-                SKU: {producto.sku}
-              </p>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
-                {producto.nombre}
-              </h1>
-            </div>
-
-            {/* Precio */}
-            <div className="my-6 py-6 border-y border-gray-100 flex items-end gap-2">
-              <span className="text-lg font-bold text-gray-400 mb-1">S/</span>
-              <span className="text-5xl font-black text-blue-600 tracking-tighter leading-none">
-                {precio.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-              </span>
-              <span className="text-sm font-medium text-gray-400 ml-2 mb-1">inc. IGV</span>
-            </div>
-
-            {/* Descripción */}
-            {producto.descripcion && (
-              <div className="mb-8">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Info size={16} className="text-blue-500" />
-                  Descripción del Producto
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+            {/* Descripción Larga */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
+                <Info className="text-blue-600" />
+                Características del Producto
+              </h3>
+              {producto.descripcion ? (
+                <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
                   {producto.descripcion}
                 </p>
+              ) : (
+                <p className="text-gray-400 italic">No hay descripción detallada disponible para este producto.</p>
+              )}
+            </div>
+
+          </div>
+
+          {/* ── Derecha: Buy Box (Sticky) ── */}
+          <div className="w-full lg:w-1/3 lg:sticky lg:top-24 flex flex-col gap-6">
+            
+            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-200 p-6 sm:p-8">
+              
+              {/* Marca */}
+              {producto.brand && (
+                <div className="mb-4">
+                  {producto.brand.logo_url ? (
+                    <img src={producto.brand.logo_url} alt={producto.brand.nombre} className="h-8 w-auto object-contain" />
+                  ) : (
+                    <span className="text-sm font-bold text-blue-600 tracking-wider uppercase">{producto.brand.nombre}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Título y SKU */}
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight leading-tight mb-2">
+                {producto.nombre}
+              </h1>
+              <p className="text-xs font-mono text-gray-400 tracking-widest uppercase mb-6">
+                SKU: {producto.sku}
+              </p>
+
+              {/* Precio Box */}
+              <div className="bg-gray-50 rounded-2xl p-6 mb-6 border border-gray-100">
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-xl font-bold text-gray-400 mb-1">S/</span>
+                  <span className="text-5xl font-black text-gray-900 tracking-tighter leading-none">
+                    {precio.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p className="text-sm font-medium text-emerald-600 flex items-center gap-1.5 mt-2">
+                  <Store size={16} /> Precio incluye IGV
+                </p>
               </div>
-            )}
 
-            {/* Beneficios estáticos */}
-            <ul className="space-y-3 mb-10">
-              <li className="flex items-start gap-3 text-sm text-gray-600">
-                <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <span>Producto original con <strong>garantía de fábrica</strong>.</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm text-gray-600">
-                <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <span>Envío seguro a <strong>nivel nacional</strong>.</span>
-              </li>
-            </ul>
-
-            {/* Widget de Compra (Client Component) */}
-            <div className="mt-auto pt-6 border-t border-gray-100">
+              {/* Add To Cart Widget */}
               <AddToCartAction producto={producto} />
+
+              {/* Beneficios */}
+              <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
+                <div className="flex items-start gap-3 text-sm text-gray-600">
+                  <ShieldCheck className="text-emerald-500 flex-shrink-0" size={20} />
+                  <span><strong>Garantía Oficial</strong><br/><span className="text-xs text-gray-500">Respaldo directo de la marca.</span></span>
+                </div>
+                <div className="flex items-start gap-3 text-sm text-gray-600">
+                  <Truck className="text-blue-500 flex-shrink-0" size={20} />
+                  <span><strong>Envíos a todo el Perú</strong><br/><span className="text-xs text-gray-500">Despacho seguro y garantizado.</span></span>
+                </div>
+              </div>
             </div>
 
           </div>
         </div>
+
+        {/* ── Productos Relacionados ── */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-16 border-t border-gray-200 pt-16">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-8 flex items-center gap-2">
+              Productos Similares
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.map(rel => (
+                <ProductCard key={rel.id} producto={rel} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

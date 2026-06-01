@@ -44,7 +44,7 @@ export default function NuevoProducto() {
                 const dataBrand = await resBrand.json();
                 if (dataBrand.success) setMarcas(dataBrand.data);
             } catch (error) {
-                console.error("Error al cargar datos.");
+                console.warn("Error al cargar datos.");
             }
         };
 

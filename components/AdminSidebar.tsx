@@ -11,9 +11,10 @@ import {
   Image as ImageIcon,
   Star,
   Menu,
-  X
+  X,
+  MessageSquareWarning
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ADMIN_LINKS = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -22,11 +23,32 @@ const ADMIN_LINKS = [
   { name: 'Categorías', href: '/admin/categorias', icon: Tags },
   { name: 'Marcas', href: '/admin/marcas', icon: Star },
   { name: 'Publicidad', href: '/admin/publicidad', icon: ImageIcon },
+  { name: 'Reclamos', href: '/admin/reclamos', icon: MessageSquareWarning },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('adminUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setUserRole(user.rol || null);
+      }
+    } catch (e) {
+      console.error("Error reading adminUser from localStorage", e);
+    }
+  }, []);
+
+  const filteredLinks = ADMIN_LINKS.filter(link => {
+    if (link.name === 'Dashboard' && userRole !== 'SUPER_ADMIN') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -49,7 +71,7 @@ export default function AdminSidebar() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-[65px] left-0 right-0 bg-white border-b border-slate-200 shadow-md z-20 px-4 pt-2 pb-4 flex flex-col gap-1">
-          {ADMIN_LINKS.map((link) => {
+          {filteredLinks.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
             return (
@@ -87,7 +109,7 @@ export default function AdminSidebar() {
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto pt-4">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">Navegación</div>
-          {ADMIN_LINKS.map((link) => {
+          {filteredLinks.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
             return (

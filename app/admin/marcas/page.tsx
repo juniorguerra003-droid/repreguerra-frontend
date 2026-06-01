@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Marca {
     id: string;
     nombre: string;
+    logo_url?: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -18,7 +19,8 @@ export default function ListaMarcas() {
     // Estados para el Modal
     const [mostrarModal, setMostrarModal] = useState(false);
     const [categoriaEditando, setMarcaEditando] = useState<Marca | null>(null);
-    const [formData, setFormData] = useState({ nombre: "" });
+    const [formData, setFormData] = useState({ nombre: "", logo_url: "" });
+    const [subiendoImagen, setSubiendoImagen] = useState(false);
 
     // Cargar Marcas
     useEffect(() => {
@@ -30,7 +32,7 @@ export default function ListaMarcas() {
                     setMarcas(data.data);
                 }
             } catch (error) {
-                console.error("Error al cargar marcas.");
+                console.warn("Error al cargar marcas.");
             } finally {
                 setCargando(false);
             }
@@ -75,14 +77,45 @@ export default function ListaMarcas() {
     // Control del Modal
     const abrirModalNuevo = () => {
         setMarcaEditando(null);
-        setFormData({ nombre: "" });
+        setFormData({ nombre: "", logo_url: "" });
         setMostrarModal(true);
     };
 
     const abrirModalEdicion = (categoria: Marca) => {
         setMarcaEditando(categoria);
-        setFormData({ nombre: categoria.nombre });
+        setFormData({ nombre: categoria.nombre, logo_url: categoria.logo_url || "" });
         setMostrarModal(true);
+    };
+
+    // Subir imagen local
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setSubiendoImagen(true);
+        const token = localStorage.getItem("adminToken");
+        const uploadData = new FormData();
+        uploadData.append('image', file);
+
+        try {
+            const res = await fetch(`${API_URL}/api/upload`, {
+                method: 'POST',
+                headers: { "Authorization": `Bearer ${token}` },
+                body: uploadData
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Generar URL absoluta para que funcione en desarrollo y producción
+                const fullUrl = data.url.startsWith('http') ? data.url : `${API_URL}${data.url}`;
+                setFormData(prev => ({ ...prev, logo_url: fullUrl }));
+            } else {
+                alert('Error al subir imagen: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error de conexión al subir la imagen.');
+        } finally {
+            setSubiendoImagen(false);
+        }
     };
 
     // Guardar (Crear o Editar)
@@ -103,14 +136,17 @@ export default function ListaMarcas() {
                     "Content-Type": "application/json", 
                     "Authorization": `Bearer ${token}` 
                 },
-                body: JSON.stringify({ nombre: formData.nombre })
+                body: JSON.stringify({ 
+                    nombre: formData.nombre, 
+                    logo_url: formData.logo_url.trim() || null 
+                })
             });
 
             if (res.ok) {
                 const dataGuardada = await res.json();
                 
                 if (categoriaEditando) {
-                    setMarcas(marcas.map(c => c.id === categoriaEditando.id ? { ...c, nombre: formData.nombre } : c));
+                    setMarcas(marcas.map(c => c.id === categoriaEditando.id ? { ...c, nombre: formData.nombre, logo_url: formData.logo_url.trim() || undefined } : c));
                 } else {
                     setMarcas([...marcas, dataGuardada.data]);
                 }
@@ -204,10 +240,20 @@ export default function ListaMarcas() {
                                             {c.id}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="inline-flex items-center gap-2 font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">
-                                                <Star size={14} className="text-slate-500" />
-                                                {c.nombre}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                {c.logo_url ? (
+                                                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center p-1 shrink-0">
+                                                        <img src={c.logo_url} alt={c.nombre} className="max-w-full max-h-full object-contain" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                                        <Star size={16} className="text-slate-400" />
+                                                    </div>
+                                                )}
+                                                <span className="font-semibold text-slate-900">
+                                                    {c.nombre}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 flex justify-end gap-2">
                                             <button 
@@ -257,6 +303,49 @@ export default function ListaMarcas() {
                                     placeholder="Ej: Accesorios, Cables..." 
                                     required 
                                 />
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    Logo de la marca
+                                </label>
+                                <div className="space-y-4">
+                                    {/* Opcion 1: Subir Archivo */}
+                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition-colors relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/png, image/jpeg, image/svg+xml"
+                                            onChange={handleFileUpload}
+                                            disabled={subiendoImagen}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                        />
+                                        <div className="pointer-events-none flex flex-col items-center gap-2">
+                                            {subiendoImagen ? (
+                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                            ) : (
+                                                <Plus size={24} className="text-slate-400" />
+                                            )}
+                                            <span className="text-sm text-slate-600 font-medium">
+                                                {subiendoImagen ? "Subiendo..." : "Haz clic para subir imagen (.png, .svg)"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-px bg-slate-200 flex-1"></div>
+                                        <span className="text-xs text-slate-400 font-bold uppercase">O PEGA UNA URL</span>
+                                        <div className="h-px bg-slate-200 flex-1"></div>
+                                    </div>
+
+                                    {/* Opcion 2: URL */}
+                                    <input 
+                                        type="url" 
+                                        value={formData.logo_url} 
+                                        onChange={e => setFormData({...formData, logo_url: e.target.value})} 
+                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white" 
+                                        placeholder="https://ejemplo.com/logo.png" 
+                                    />
+                                </div>
                             </div>
                             
                             <div className="flex justify-end gap-3 pt-2">

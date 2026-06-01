@@ -192,7 +192,7 @@ export default function AdminDashboard() {
         })
       );
     } catch (error) {
-      console.error("Error al cargar las métricas", error);
+      console.warn("Error al cargar las métricas", error);
     } finally {
       setCargando(false);
     }

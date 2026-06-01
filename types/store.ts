@@ -34,7 +34,8 @@ export interface Producto {
   brand?: {
     id: string;
     nombre: string;
-  };
+    logo_url?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

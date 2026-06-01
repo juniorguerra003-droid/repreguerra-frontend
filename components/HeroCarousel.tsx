@@ -34,44 +34,87 @@ interface HeroCarouselProps {
 
 function StaticHero() {
   return (
-    <section className="relative bg-gradient-to-br from-gray-950 via-blue-950 to-gray-900 text-white overflow-hidden">
-      {/* Orbes decorativos */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
-      </div>
+    <section className="relative bg-[#070B19] text-white overflow-hidden border-b border-white/5">
+      {/* Patrón de cuadrícula sutil (orgánico, no neón) */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+        style={{ backgroundImage: 'linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
+      />
+      
+      <div className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          
+          {/* Contenido Izquierdo */}
+          <div className="flex flex-col items-start space-y-8 pt-4">
+            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] text-white">
+              Tecnología de <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-500">Alta Gama</span> <br />
+              Para tu Seguridad
+            </h1>
+            
+            <p className="text-gray-400 text-lg sm:text-xl leading-relaxed max-w-lg font-medium">
+              Equipamiento profesional en videovigilancia y redes con garantía real, asesoría especializada y envío a todo el Perú.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-4">
+              <Link
+                href="/catalogo"
+                className="w-full sm:w-auto bg-white text-black hover:bg-gray-200 font-extrabold px-8 py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-[0_0_40px_rgba(255,255,255,0.1)]"
+              >
+                Explorar Catálogo <ChevronRight size={18} />
+              </Link>
+              <a
+                href="#quienes-somos"
+                className="w-full sm:w-auto text-white hover:text-gray-300 font-bold px-8 py-4 rounded-2xl transition text-sm border border-white/20 hover:border-white/40 flex items-center justify-center bg-white/5 backdrop-blur-sm"
+              >
+                Nuestra Historia
+              </a>
+            </div>
+            
+            {/* Trust Badges */}
+            <div className="flex items-center gap-6 pt-8 border-t border-white/10 w-full mt-4">
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-white">10+</span>
+                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Años de Exp.</span>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-white">100%</span>
+                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Garantía Real</span>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-white">24/7</span>
+                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Soporte</span>
+              </div>
+            </div>
+          </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28 text-center w-full">
-        <span className="inline-flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-[0.25em] mb-5 bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/20">
-          <Sparkles size={12} />
-          Tienda Oficial
-        </span>
+          {/* Imagen Derecha (Orgánica, elaborada) */}
+          <div className="relative hidden lg:block h-[600px] w-full group perspective-1000">
+            <div className="absolute inset-0 bg-gradient-to-tr from-gray-900 to-gray-800 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+              <img 
+                src="/hero-bg.png" 
+                alt="Equipos de seguridad profesional" 
+                className="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070B19] via-transparent to-transparent" />
+            </div>
+            {/* Elemento flotante decorativo */}
+            <div className="absolute -bottom-8 -left-8 bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl shadow-2xl transform transition-transform duration-500 hover:-translate-y-2">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">Stock Disponible</p>
+                  <p className="text-gray-400 text-xs">Envíos inmediatos a nivel nacional</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-5 leading-none">
-          {siteConfig.name}
-          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mt-2">
-            Tu Tienda de Confianza
-          </span>
-        </h1>
-
-        <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mt-4 leading-relaxed">
-          Equipos y tecnología con stock real, precios transparentes y entrega garantizada a todo el Perú.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
-          <a
-            href="#catalogo"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-2xl shadow-blue-900/50 flex items-center gap-2 text-sm hover:scale-105"
-          >
-            Ver catálogo <ChevronRight size={18} />
-          </a>
-          <a
-            href="#quienes-somos"
-            className="text-gray-400 hover:text-white font-bold px-6 py-4 rounded-xl transition text-sm border border-white/10 hover:border-white/30"
-          >
-            Sobre nosotros
-          </a>
         </div>
       </div>
     </section>

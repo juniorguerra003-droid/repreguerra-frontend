@@ -5,6 +5,7 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import WhatsAppWidget from "@/components/WhatsAppWidget";
+import Footer from "@/components/Footer";
 import { siteConfig } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -61,6 +62,7 @@ export default function RootLayout({
             <Navbar />
             {children}
             <WhatsAppWidget />
+            <Footer />
           </CartProvider>
         </AuthProvider>
       </body>

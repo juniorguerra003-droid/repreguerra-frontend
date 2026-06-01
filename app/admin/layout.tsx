@@ -1,8 +1,13 @@
+'use client';
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/admin/login';
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
       {/* 
@@ -12,7 +17,7 @@ export default function AdminLayout({
       */}
       
       {/* Sidebar fijo a la izquierda (desktop) / topbar (mobile) */}
-      <AdminSidebar />
+      {!isLoginPage && <AdminSidebar />}
       
       {/* Contenedor principal para las páginas admin */}
       <main className="flex-1 w-full max-w-[100vw] overflow-x-hidden">
@@ -24,3 +29,4 @@ export default function AdminLayout({
 
 // Importamos AdminSidebar al final para evitar problemas de Next.js si fuera 'use client'
 import AdminSidebar from '@/components/AdminSidebar';
+import { usePathname } from 'next/navigation';

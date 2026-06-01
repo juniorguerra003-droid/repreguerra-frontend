@@ -23,8 +23,11 @@ export default function LoginAdmin() {
             console.log("🚨 ESTRUCTURA REAL DEL BACKEND:", data);
 
             if (respuesta.ok) {
-                // ¡Éxito! Guardamos el token de seguridad en la memoria del navegador
+                // ¡Éxito! Guardamos el token de seguridad y el usuario en la memoria del navegador
                 localStorage.setItem("adminToken", data.data.token);
+                if (data.data.user) {
+                    localStorage.setItem("adminUser", JSON.stringify(data.data.user));
+                }
                 alert("🔑 ¡Acceso concedido! Token guardado con éxito.");
 
                 // Redirigimos automáticamente al panel de crear productos

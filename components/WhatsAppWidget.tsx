@@ -24,11 +24,11 @@ export default function WhatsAppWidget() {
   }, []);
 
   return (
-    <div ref={widgetRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div ref={widgetRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
       {/* Panel Emergente */}
       <div 
-        className={`mb-4 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-300 origin-bottom-right ${
-          isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-50 opacity-0 translate-y-10 pointer-events-none"
+        className={`mb-4 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-300 origin-bottom-right pointer-events-auto ${
+          isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-50 opacity-0 translate-y-10 !pointer-events-none"
         }`}
       >
         <div className="bg-[#25D366] p-5 text-white flex justify-between items-start">
@@ -75,7 +75,7 @@ export default function WhatsAppWidget() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Contactar por WhatsApp"
-        className="w-16 h-16 rounded-full bg-[#25D366] hover:bg-[#20b859] shadow-2xl shadow-green-900/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group relative"
+        className="w-16 h-16 rounded-full bg-[#25D366] hover:bg-[#20b859] shadow-2xl shadow-green-900/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group relative pointer-events-auto"
       >
         {!isOpen && (
           <span className="absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-40 animate-ping" />
