@@ -1,36 +1,36 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Tag, Search, Plus, Edit, Trash2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Star, Search, Plus, Edit, Trash2, CheckCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
-interface Categoria {
+interface Marca {
     id: string;
     nombre: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-export default function ListaCategorias() {
-    const [categorias, setCategorias] = useState<Categoria[]>([]);
+export default function ListaMarcas() {
+    const [marcas, setMarcas] = useState<Marca[]>([]);
     const [cargando, setCargando] = useState(true);
     const [busqueda, setBusqueda] = useState("");
     
     // Estados para el Modal
     const [mostrarModal, setMostrarModal] = useState(false);
-    const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
+    const [categoriaEditando, setMarcaEditando] = useState<Marca | null>(null);
     const [formData, setFormData] = useState({ nombre: "" });
 
-    // Cargar Categorías
+    // Cargar Marcas
     useEffect(() => {
         const cargarDatos = async () => {
             try {
-                const respuesta = await fetch(`${API_URL}/api/categories`);
+                const respuesta = await fetch(`${API_URL}/api/brands`);
                 const data = await respuesta.json();
                 if (data.success) {
-                    setCategorias(data.data);
+                    setMarcas(data.data);
                 }
             } catch (error) {
-                console.error("Error al cargar categorías.");
+                console.error("Error al cargar marcas.");
             } finally {
                 setCargando(false);
             }
@@ -45,24 +45,24 @@ export default function ListaCategorias() {
     };
 
     const busquedaLimpia = limpiarTexto(busqueda);
-    const categoriasFiltradas = categorias.filter((c) => {
+    const marcasFiltradas = marcas.filter((c) => {
         const nombreLimpio = limpiarTexto(c.nombre);
         return nombreLimpio.includes(busquedaLimpia);
     });
 
-    // Eliminar Categoría
-    const eliminarCategoria = async (id: string) => {
-        if (!window.confirm("¿Seguro de eliminar esta categoría? Si tiene productos asignados, podría haber problemas.")) return;
+    // Eliminar Marca
+    const eliminarMarca = async (id: string) => {
+        if (!window.confirm("¿Seguro de eliminar esta marca? Si tiene productos asignados, podría haber problemas.")) return;
         
         try {
             const token = localStorage.getItem("adminToken");
-            const res = await fetch(`${API_URL}/api/categories/${id}`, {
+            const res = await fetch(`${API_URL}/api/brands/${id}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
             
             if (res.ok) {
-                setCategorias(categorias.filter(c => c.id !== id));
+                setMarcas(marcas.filter(c => c.id !== id));
             } else {
                 const errorReal = await res.text();
                 alert("🚨 Error: " + errorReal);
@@ -74,13 +74,13 @@ export default function ListaCategorias() {
 
     // Control del Modal
     const abrirModalNuevo = () => {
-        setCategoriaEditando(null);
+        setMarcaEditando(null);
         setFormData({ nombre: "" });
         setMostrarModal(true);
     };
 
-    const abrirModalEdicion = (categoria: Categoria) => {
-        setCategoriaEditando(categoria);
+    const abrirModalEdicion = (categoria: Marca) => {
+        setMarcaEditando(categoria);
         setFormData({ nombre: categoria.nombre });
         setMostrarModal(true);
     };
@@ -91,8 +91,8 @@ export default function ListaCategorias() {
         const token = localStorage.getItem("adminToken");
         
         const url = categoriaEditando 
-            ? `${API_URL}/api/categories/${categoriaEditando.id}` 
-            : `${API_URL}/api/categories`;
+            ? `${API_URL}/api/brands/${categoriaEditando.id}` 
+            : `${API_URL}/api/brands`;
 
         const metodo = categoriaEditando ? "PATCH" : "POST";
 
@@ -110,9 +110,9 @@ export default function ListaCategorias() {
                 const dataGuardada = await res.json();
                 
                 if (categoriaEditando) {
-                    setCategorias(categorias.map(c => c.id === categoriaEditando.id ? { ...c, nombre: formData.nombre } : c));
+                    setMarcas(marcas.map(c => c.id === categoriaEditando.id ? { ...c, nombre: formData.nombre } : c));
                 } else {
-                    setCategorias([...categorias, dataGuardada.data]);
+                    setMarcas([...marcas, dataGuardada.data]);
                 }
                 setMostrarModal(false);
             } else {
@@ -130,11 +130,11 @@ export default function ListaCategorias() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-                        <Tag className="text-violet-500" />
-                        Categorías
+                        <Star className="text-violet-500" />
+                        Marcas
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        Gestiona las categorías de tus productos para organizar el catálogo.
+                        Gestiona las marcas de tus productos para organizar el catálogo.
                     </p>
                 </div>
                 
@@ -145,7 +145,7 @@ export default function ListaCategorias() {
                         </div>
                         <input 
                             type="text" 
-                            placeholder="Buscar categoría..." 
+                            placeholder="Buscar marca..." 
                             value={busqueda} 
                             onChange={e => setBusqueda(e.target.value)} 
                             className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-all" 
@@ -156,7 +156,7 @@ export default function ListaCategorias() {
                         className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-slate-200 flex items-center gap-2 whitespace-nowrap"
                     >
                         <Plus size={16} />
-                        <span className="hidden sm:inline">Nueva Categoría</span>
+                        <span className="hidden sm:inline">Nueva Marca</span>
                     </button>
                 </div>
             </div>
@@ -168,7 +168,7 @@ export default function ListaCategorias() {
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">
-                                    ID Categoría
+                                    ID Marca
                                 </th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     Nombre
@@ -184,28 +184,28 @@ export default function ListaCategorias() {
                                     <td colSpan={3} className="px-6 py-12 text-center text-slate-500">
                                         <div className="flex flex-col items-center justify-center gap-2">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-                                            <p className="text-sm font-medium mt-2">Cargando categorías...</p>
+                                            <p className="text-sm font-medium mt-2">Cargando marcas...</p>
                                         </div>
                                     </td>
                                 </tr>
-                            ) : categoriasFiltradas.length === 0 ? (
+                            ) : marcasFiltradas.length === 0 ? (
                                 <tr>
                                     <td colSpan={3} className="px-6 py-12 text-center text-slate-500">
                                         <div className="flex flex-col items-center justify-center gap-3">
                                             <AlertTriangle size={32} className="text-slate-300" />
-                                            <p className="text-sm font-medium text-slate-600">No se encontraron categorías</p>
+                                            <p className="text-sm font-medium text-slate-600">No se encontraron marcas</p>
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
-                                categoriasFiltradas.map(c => (
+                                marcasFiltradas.map(c => (
                                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                                         <td className="px-6 py-4 text-sm text-slate-500 font-mono select-all">
                                             {c.id}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center gap-2 font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">
-                                                <Tag size={14} className="text-slate-500" />
+                                                <Star size={14} className="text-slate-500" />
                                                 {c.nombre}
                                             </span>
                                         </td>
@@ -218,7 +218,7 @@ export default function ListaCategorias() {
                                                 <Edit size={16} />
                                             </button>
                                             <button 
-                                                onClick={() => eliminarCategoria(c.id)} 
+                                                onClick={() => eliminarMarca(c.id)} 
                                                 className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                                                 title="Eliminar"
                                             >
@@ -239,15 +239,15 @@ export default function ListaCategorias() {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-slate-100 overflow-hidden transform transition-all">
                         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Tag size={18} className="text-violet-500" />
-                                {categoriaEditando ? "Editar Categoría" : "Nueva Categoría"}
+                                <Star size={18} className="text-violet-500" />
+                                {categoriaEditando ? "Editar Marca" : "Nueva Marca"}
                             </h2>
                         </div>
                         
                         <form onSubmit={guardarCambios} className="p-6">
                             <div className="mb-6">
                                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                                    Nombre de la categoría
+                                    Nombre de la marca
                                 </label>
                                 <input 
                                     type="text" 
@@ -274,7 +274,7 @@ export default function ListaCategorias() {
                                     {categoriaEditando ? (
                                         <>Guardar Cambios <CheckCircle size={16} /></>
                                     ) : (
-                                        <>Crear Categoría <Plus size={16} /></>
+                                        <>Crear Marca <Plus size={16} /></>
                                     )}
                                 </button>
                             </div>

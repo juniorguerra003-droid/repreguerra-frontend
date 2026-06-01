@@ -6,6 +6,7 @@
 export interface Categoria {
   id: string;
   nombre: string;
+  estado?: boolean;
 }
 
 /**
@@ -14,16 +15,26 @@ export interface Categoria {
  */
 export interface Producto {
   id: string;
+  categoryId: string;
+  brandId?: string;
   nombre: string;
   sku: string;
   descripcion: string | null;
-  /** Prisma Decimal → llega como string, parsear con parseFloat() */
   precio: string;
+  enOferta: boolean;
+  precioOferta?: string | null;
+  mostrarPrecio: boolean;
   stock: number;
   imagen_url: string | null;
   estado: boolean;
-  categoryId: string;
-  category: Categoria;
+  category: {
+    id: string;
+    nombre: string;
+  };
+  brand?: {
+    id: string;
+    nombre: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

@@ -1,9 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js"; // <-- Importamos Supabase
+import { createClient } from "@supabase/supabase-js";
+import { 
+    PackageOpen, Search, Plus, Edit, Trash2, CheckCircle, 
+    AlertTriangle, Image as ImageIcon, Box, DollarSign, UploadCloud
+} from "lucide-react";
+import BulkUploadModal from "@/components/BulkUploadModal";
 
-// --- CONEXIÓN A SUPABASE ---
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -18,12 +23,20 @@ interface Producto {
     nombre: string;
     sku: string;
     descripcion: string;
-    precio: number;
+    precio: number | string;
+    enOferta: boolean;
+    precioOferta?: number | string | null;
+    mostrarPrecio: boolean;
     stock: number;
     estado: boolean;
-    imagen_url?: string; // <-- Agregamos el campo de la imagen
-    categoryId?: string;
+    categoryId: string;
+    brandId?: string | null;
+    imagen_url: string;
     category?: {
+        id: string;
+        nombre: string;
+    };
+    brand?: {
         id: string;
         nombre: string;
     };
@@ -32,12 +45,14 @@ interface Producto {
 export default function ListaProductos() {
     const [productos, setProductos] = useState<Producto[]>([]);
     const [categorias, setCategorias] = useState<Categoria[]>([]);
+    const [marcas, setMarcas] = useState<any[]>([]);
     const [cargando, setCargando] = useState(true);
     const [busqueda, setBusqueda] = useState("");
     
     const [mostrarModal, setMostrarModal] = useState(false);
+    const [mostrarBulkModal, setMostrarBulkModal] = useState(false);
     const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
-    const [subiendoImagen, setSubiendoImagen] = useState(false); // Estado para el cargador de la imagen
+    const [subiendoImagen, setSubiendoImagen] = useState(false);
 
     const [formData, setFormData] = useState({
         nombre: "",
@@ -45,19 +60,27 @@ export default function ListaProductos() {
         precio: "",
         stock: "",
         categoryId: "",
-        imagen_url: "" // <-- Memoria para la URL de la imagen
+        brandId: "",
+        enOferta: false,
+        precioOferta: "",
+        mostrarPrecio: true,
+        imagen_url: ""
     });
 
     useEffect(() => {
         const cargarDatos = async () => {
             try {
-                const resProductos = await fetch("http://localhost:3000/api/products");
+                const resProductos = await fetch(`${API_URL}/api/products`);
                 const dataProductos = await resProductos.json();
                 if (dataProductos.success) setProductos(dataProductos.data);
 
-                const resCategorias = await fetch("http://localhost:3000/api/categories");
+                const resCategorias = await fetch(`${API_URL}/api/categories`);
                 const dataCategorias = await resCategorias.json();
                 if (dataCategorias.success) setCategorias(dataCategorias.data);
+
+                const resMarcas = await fetch(`${API_URL}/api/brands`);
+                const dataMarcas = await resMarcas.json();
+                if (dataMarcas.success) setMarcas(dataMarcas.data);
             } catch (error) {
                 console.error("Error al cargar datos.");
             } finally {
@@ -83,13 +106,12 @@ export default function ListaProductos() {
     const eliminarProducto = async (id: string) => {
         if (!window.confirm("¿Seguro de eliminar?")) return;
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`http://localhost:3000/api/products/${id}`, {
+        const res = await fetch(`${API_URL}/api/products/${id}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token}` }
         });
         if (res.ok) {
             setProductos(productos.filter(p => p.id !== id));
-            alert("Eliminado.");
         }
     };
 
@@ -101,12 +123,15 @@ export default function ListaProductos() {
             precio: p.precio.toString(),
             stock: p.stock.toString(),
             categoryId: p.categoryId || "",
-            imagen_url: p.imagen_url || "" // Cargamos la imagen si ya la tiene
+            brandId: p.brandId || "",
+            enOferta: p.enOferta || false,
+            precioOferta: p.precioOferta ? p.precioOferta.toString() : "",
+            mostrarPrecio: p.mostrarPrecio !== undefined ? p.mostrarPrecio : true,
+            imagen_url: p.imagen_url || "" 
         });
         setMostrarModal(true);
     };
 
-    // --- MAGIA: FUNCIÓN PARA SUBIR LA IMAGEN A SUPABASE ---
     const subirImagen = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const archivo = e.target.files?.[0];
         if (!archivo) return;
@@ -114,23 +139,19 @@ export default function ListaProductos() {
         setSubiendoImagen(true);
 
         try {
-            // 1. Creamos un nombre único para que no se sobreescriban fotos iguales
             const extension = archivo.name.split('.').pop();
             const nombreArchivo = `${Date.now()}-${Math.random().toString(36).substring(2)}.${extension}`;
 
-            // 2. Subimos al Bucket 'productos'
             const { data, error } = await supabase.storage
                 .from('productos')
                 .upload(nombreArchivo, archivo);
 
             if (error) throw error;
 
-            // 3. Obtenemos la URL pública para guardarla en la base de datos
             const { data: publicData } = supabase.storage
                 .from('productos')
                 .getPublicUrl(nombreArchivo);
 
-            // 4. Actualizamos el formulario con la URL mágica
             setFormData({ ...formData, imagen_url: publicData.publicUrl });
         } catch (error: any) {
             alert("Error al subir la imagen. Verifica que el Bucket 'productos' sea público. Detalle: " + error.message);
@@ -148,12 +169,16 @@ export default function ListaProductos() {
             nombre: formData.nombre,
             descripcion: formData.descripcion,
             precio: parseFloat(formData.precio),
-            stock: parseInt(formData.stock),
+            stock: parseInt(formData.stock, 10),
             categoryId: formData.categoryId,
-            imagen_url: formData.imagen_url // Mandamos la URL al Backend
+            brandId: formData.brandId || null,
+            enOferta: formData.enOferta,
+            precioOferta: formData.enOferta && formData.precioOferta ? parseFloat(formData.precioOferta) : null,
+            mostrarPrecio: formData.mostrarPrecio,
+            imagen_url: formData.imagen_url
         };
 
-        const res = await fetch(`http://localhost:3000/api/products/${productoEditando.id}`, {
+        const res = await fetch(`${API_URL}/api/products/${productoEditando.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
             body: JSON.stringify(paqueteActualizado)
@@ -163,114 +188,279 @@ export default function ListaProductos() {
             const cat = categorias.find(c => c.id === formData.categoryId);
             setProductos(productos.map(p => p.id === productoEditando.id ? { ...p, ...paqueteActualizado, category: cat } : p));
             setMostrarModal(false);
-            alert("Actualizado.");
         }
     };
 
     return (
-        <div className="max-w-7xl mx-auto p-8 bg-gray-50 min-h-screen">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-extrabold text-gray-900">Inventario Repreguerra</h1>
-                <div className="flex gap-4">
-                    <input type="text" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} className="p-2 border rounded shadow-sm focus:ring-2 outline-none w-72" />
-                    <Link href="/admin/productos/nuevo" className="bg-blue-600 text-white p-2 rounded font-bold shadow-md">+ Nuevo</Link>
+        <div className="p-6 md:p-10 bg-slate-50 min-h-screen">
+            {/* Header Premium */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                        <PackageOpen className="text-blue-500" />
+                        Inventario Repreguerra
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Gestiona todos los productos de tu tienda.
+                    </p>
+                </div>
+                
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full md:w-64">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search size={16} className="text-slate-400" />
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar producto..." 
+                            value={busqueda} 
+                            onChange={e => setBusqueda(e.target.value)} 
+                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-all" 
+                        />
+                    </div>
+                    <button 
+                        onClick={() => setMostrarBulkModal(true)}
+                        className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm whitespace-nowrap"
+                    >
+                        <UploadCloud size={16} /> Importar
+                    </button>
+                    <Link 
+                        href="/admin/productos/nuevo" 
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-slate-200 flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <Plus size={16} />
+                        <span className="hidden sm:inline">Nuevo Producto</span>
+                    </Link>
                 </div>
             </div>
 
-            <table className="min-w-full bg-white border rounded-lg shadow-sm">
-                <thead className="bg-gray-900 text-white">
-                    <tr>
-                        <th className="p-4 text-left w-16">Foto</th>
-                        <th className="p-4 text-left">SKU</th>
-                        <th className="p-4 text-left">Nombre</th>
-                        <th className="p-4 text-left">Categoría</th>
-                        <th className="p-4 text-left">Precio</th>
-                        <th className="p-4 text-left">Stock</th>
-                        <th className="p-4 text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {productosFiltrados.map(p => (
-                        <tr key={p.id} className="border-b hover:bg-gray-50">
-                            {/* MINIATURA DE LA IMAGEN EN LA TABLA */}
-                            <td className="p-4 text-center">
-                                {p.imagen_url ? (
-                                    <img src={p.imagen_url} alt="Prod" className="w-10 h-10 object-cover rounded shadow-sm border" />
-                                ) : (
-                                    <div className="w-10 h-10 bg-gray-200 rounded text-xs flex items-center justify-center text-gray-400">N/A</div>
-                                )}
-                            </td>
-                            <td className="p-4 font-mono text-sm">{p.sku}</td>
-                            <td className="p-4 font-semibold text-gray-800">{p.nombre}</td>
-                            <td className="p-4 text-gray-600">{p.category?.nombre || "N/A"}</td>
-                            <td className="p-4 text-green-700 font-bold">S/ {p.precio}</td>
-                            <td className="p-4">{p.stock}</td>
-                            <td className="p-4 text-center space-x-3">
-                                <button onClick={() => abrirModal(p)} className="text-blue-600 font-bold">Editar</button>
-                                <button onClick={() => eliminarProducto(p.id)} className="text-red-600 font-bold">Eliminar</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {/* Contenedor Tabla */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full whitespace-nowrap">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-16">Foto</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">SKU</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Precio</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Estado</th>
+                                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {cargando ? (
+                                <tr>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                                            <p className="text-sm font-medium mt-2">Cargando inventario...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : productosFiltrados.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <PackageOpen size={32} className="text-slate-300" />
+                                            <p className="text-sm font-medium text-slate-600">No se encontraron productos</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                productosFiltrados.map(p => (
+                                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="px-6 py-4 text-center">
+                                            {p.imagen_url ? (
+                                                <img src={p.imagen_url} alt="Prod" className="w-10 h-10 object-cover rounded-lg shadow-sm border border-slate-200" />
+                                            ) : (
+                                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200">
+                                                    <ImageIcon size={16} />
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-sm text-slate-500">{p.sku}</td>
+                                        <td className="px-6 py-4 font-semibold text-slate-900">{p.nombre}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center gap-1.5 text-sm text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+                                                {p.category?.nombre || "N/A"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-900 font-bold">S/ {Number(p.precio).toFixed(2)}</td>
+                                        <td className="px-6 py-4">
+                                            {p.stock <= 5 ? (
+                                                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-700 bg-rose-100 px-2.5 py-1 rounded-lg">
+                                                    <AlertTriangle size={14} />
+                                                    {p.stock}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                                    <Box size={14} className="text-slate-500" />
+                                                    {p.stock}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {p.estado ? (
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactivo
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 flex justify-end gap-2">
+                                            <button 
+                                                onClick={() => abrirModal(p)} 
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Editar"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => eliminarProducto(p.id)} 
+                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             {/* MODAL DE EDICIÓN CON CARGA DE IMÁGENES */}
             {mostrarModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white p-6 rounded-lg w-full max-w-lg text-black max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-2xl font-bold mb-4 border-b pb-2">Editar Producto</h2>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-slate-100 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <PackageOpen size={18} className="text-blue-500" />
+                                Editar Producto
+                            </h2>
+                        </div>
                         
-                        <form onSubmit={guardarCambios} className="space-y-4">
-                            
-                            {/* ZONA DE CARGA DE IMAGEN */}
-                            <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
-                                <label className="block text-sm font-semibold mb-2">Imagen del Producto</label>
-                                <div className="flex items-center gap-4">
-                                    {formData.imagen_url ? (
-                                        <img src={formData.imagen_url} alt="Preview" className="w-20 h-20 object-cover rounded shadow-md border" />
-                                    ) : (
-                                        <div className="w-20 h-20 bg-gray-200 flex items-center justify-center rounded border text-gray-400 text-xs text-center">Sin foto</div>
-                                    )}
-                                    <div className="flex-1">
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={subirImagen} 
-                                            disabled={subiendoImagen}
-                                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                        />
-                                        {subiendoImagen && <p className="text-sm text-blue-600 mt-2 font-bold animate-pulse">⏳ Subiendo imagen a Supabase...</p>}
+                        <div className="overflow-y-auto p-6">
+                            <form onSubmit={guardarCambios} className="space-y-5">
+                                {/* ZONA DE CARGA DE IMAGEN */}
+                                <div className="bg-slate-50 p-5 rounded-xl border border-dashed border-slate-200">
+                                    <label className="block text-sm font-bold text-slate-700 mb-3">Imagen del Producto</label>
+                                    <div className="flex items-center gap-4">
+                                        {formData.imagen_url ? (
+                                            <img src={formData.imagen_url} alt="Preview" className="w-20 h-20 object-cover rounded-xl shadow-sm border border-slate-200 bg-white" />
+                                        ) : (
+                                            <div className="w-20 h-20 bg-white flex items-center justify-center rounded-xl border border-slate-200 text-slate-400">
+                                                <ImageIcon size={24} />
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={subirImagen} 
+                                                disabled={subiendoImagen}
+                                                className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer transition-colors"
+                                            />
+                                            {subiendoImagen && <p className="text-xs text-blue-600 mt-2 font-bold animate-pulse flex items-center gap-1"><CheckCircle size={12}/> Subiendo a Supabase...</p>}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <input type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full border p-2 rounded focus:ring-2 outline-none" placeholder="Nombre" required />
-                            <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full border p-2 rounded focus:ring-2 outline-none" placeholder="Descripción" rows={3} />
-                            
-                            <select value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})} className="w-full border p-2 rounded focus:ring-2 outline-none" required>
-                                <option value="" disabled>Selecciona una categoría...</option>
-                                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                            </select>
-                            
-                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Precio (S/)</label>
-                                    <input type="number" step="0.01" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} className="w-full border p-2 rounded focus:ring-2 outline-none" required />
+                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Nombre</label>
+                                    <input type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white" required />
                                 </div>
+                                
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Stock</label>
-                                    <input type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full border p-2 rounded focus:ring-2 outline-none" required />
+                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Descripción</label>
+                                    <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white resize-none" rows={3} />
                                 </div>
-                            </div>
-                            
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                                <button type="button" onClick={() => setMostrarModal(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold p-2 rounded px-4 transition">Cancelar</button>
-                                <button type="submit" disabled={subiendoImagen} className={`text-white font-bold p-2 rounded px-4 transition ${subiendoImagen ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md'}`}>Guardar</button>
-                            </div>
-                        </form>
+                                
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Categoría</label>
+                                    <select value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white" required>
+                                        <option value="" disabled>Selecciona una categoría...</option>
+                                        {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Marca (Opcional)</label>
+                                    <select value={formData.brandId} onChange={e => setFormData({...formData, brandId: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white">
+                                        <option value="">Sin marca</option>
+                                        {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked={formData.enOferta} onChange={e => setFormData({...formData, enOferta: e.target.checked})} className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500" />
+                                        <span className="font-bold text-slate-800">Producto en Oferta</span>
+                                    </label>
+                                    
+                                    {formData.enOferta && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-red-600 mb-1.5 flex items-center gap-1">Precio Oferta (S/)</label>
+                                            <input type="number" step="0.01" value={formData.precioOferta} onChange={e => setFormData({...formData, precioOferta: e.target.value})} className="w-full px-4 py-2.5 border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all text-red-900 bg-red-50 focus:bg-white font-bold" required={formData.enOferta} />
+                                        </div>
+                                    )}
+
+                                    <label className="flex items-start gap-3 cursor-pointer mt-4">
+                                        <input type="checkbox" checked={formData.mostrarPrecio} onChange={e => setFormData({...formData, mostrarPrecio: e.target.checked})} className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 mt-0.5" />
+                                        <div>
+                                            <span className="font-bold text-slate-800 block">Mostrar precio al público</span>
+                                            <span className="text-xs text-slate-500">Desactiva para requerir cotización.</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                            <DollarSign size={14} className="text-slate-400"/> Precio (S/)
+                                        </label>
+                                        <input type="number" step="0.01" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                            <Box size={14} className="text-slate-400"/> Stock
+                                        </label>
+                                        <input type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-900 bg-slate-50 focus:bg-white" required />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
+                                    <button type="button" onClick={() => setMostrarModal(false)} className="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" disabled={subiendoImagen} className={`text-white text-sm font-bold px-5 py-2.5 rounded-xl transition shadow-md flex items-center gap-2 ${subiendoImagen ? 'bg-slate-300 shadow-none cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}>
+                                        Guardar Cambios <CheckCircle size={16} />
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
+            <BulkUploadModal 
+                isOpen={mostrarBulkModal} 
+                onClose={() => setMostrarBulkModal(false)} 
+                onSuccess={() => {
+                    fetch(`${API_URL}/api/products`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) setProductos(data.data);
+                        });
+                }} 
+            />
         </div>
     );
 }

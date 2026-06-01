@@ -1,154 +1,59 @@
-'use client';
-
-/**
- * components/Catalog.tsx
- *
- * Componente principal de la tienda pública.
- *
- * Renderiza:
- *  1. HeroCarousel (banners dinámicos) — justo debajo del Navbar global
- *  2. Sección de catálogo con filtros + grid de productos
- *  3. Sección "¿Quiénes Somos?" con tarjetas institucionales
- *  4. Sección "Encuéntranos" con mapa de Google Maps + contacto
- *  5. Footer corporativo
- *  6. Botón flotante de WhatsApp
- *
- * NOTA: El Navbar y el CartDrawer ahora viven en layout.tsx (Navbar.tsx),
- * NO en este componente.
- */
-
-import { useState, useEffect, useRef } from 'react';
+"use client";
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-
-import {
-  ShoppingCart,
-  ShoppingBag,
-  ChevronRight,
-  Sparkles,
-  Shield,
-  Truck,
-  HeadphonesIcon,
-  MapPin,
-  Mail,
-  Clock,
-  Star,
-  Store,
+import { 
+  Search, PackageOpen, ShoppingBag, DollarSign, Heart, Sparkles, SlidersHorizontal, Tag, Star
 } from 'lucide-react';
+import { siteConfig } from '@/lib/constants';
 import { useCart } from '@/context/CartContext';
-import HeroCarousel, { type Banner } from '@/components/HeroCarousel';
+import WishlistButton from '@/components/WishlistButton';
 import type { Producto, Categoria } from '@/types/store';
 
 // ─────────────────────────────────────────────
-// Hooks y Helpers de UI para Animaciones
-// ─────────────────────────────────────────────
-
-function useFadeIn() {
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(entry.target);
-        }
-      });
-    });
-
-    if (domRef.current) observer.observe(domRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return { isVisible, domRef };
-}
-
-function FadeInSection({
-  children,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-}) {
-  const { isVisible, domRef } = useFadeIn();
-  return (
-    <div
-      ref={domRef}
-      className={`transition-all duration-1000 ease-out ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-      }`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function SectionTitle({
-  title,
-  subtitle,
-  icon: Icon,
-}: {
-  title: string;
-  subtitle?: string;
-  icon?: React.ComponentType<{ size: number }>;
-}) {
-  return (
-    <div className="text-center mb-16">
-      {Icon && (
-        <span className="inline-flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-[0.25em] mb-4 bg-blue-50 px-4 py-1.5 rounded-full">
-          <Icon size={12} /> Nuestra propuesta
-        </span>
-      )}
-      <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 tracking-tight relative inline-block">
-        {title}
-        {!Icon && (
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-blue-600 rounded-full" />
-        )}
-      </h2>
-      {subtitle && (
-        <p className="text-gray-500 mt-6 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Sub-componente: ProductCard
+// Sub-componente: ProductCard Avanzado
 // ─────────────────────────────────────────────
 
 function ProductCard({ producto }: { producto: Producto }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
-  const precio = parseFloat(producto.precio);
+  // Parseamos los precios
+  const precioBase = parseFloat(producto.precio || "0");
+  const precioOferta = producto.precioOferta ? parseFloat(producto.precioOferta) : null;
+  
+  // Regla de Negocio: Ocultar o Mostrar Precio
+  const { mostrarPrecio, enOferta } = producto;
+  
+  const precioFinal = enOferta && precioOferta ? precioOferta : precioBase;
 
   const handleAddToCart = () => {
     addItem({
       id: producto.id,
       nombre: producto.nombre,
-      precio,
+      precio: precioFinal,
       imagen_url: producto.imagen_url,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
   };
 
+  const handleQuoteWhatsApp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const phone = siteConfig.whatsappNumbers[0].number.replace(/\D/g, '');
+    const message = `Hola Representaciones Guerra, deseo cotizar el producto: ${producto.nombre} (SKU: ${producto.sku})`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   return (
-    <article className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col relative">
-      {/* Link overlay que hace toda la tarjeta clickable menos el botón */}
+    <article className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col relative h-full">
       <Link href={`/producto/${producto.id}`} className="absolute inset-0 z-0" aria-label={`Ver ${producto.nombre}`} />
 
       {/* Imagen */}
-      <div className="relative aspect-square bg-gray-50 overflow-hidden flex items-center justify-center p-4 z-10 pointer-events-none">
+      <div className="relative aspect-square bg-gray-50 overflow-hidden flex items-center justify-center p-4 z-10">
+        <WishlistButton productId={producto.id} />
         {producto.imagen_url ? (
-          <img
-            src={producto.imagen_url}
-            alt={producto.nombre}
-            className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-500"
-          />
+          <img src={producto.imagen_url} alt={producto.nombre} className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-300">
             <ShoppingBag size={48} strokeWidth={1} />
@@ -156,71 +61,85 @@ function ProductCard({ producto }: { producto: Producto }) {
           </div>
         )}
 
-        {/* Badge de categoría */}
-        <div className="absolute top-3 left-3 bg-gray-900/90 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-          {producto.category.nombre}
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {producto.category && (
+            <div className="bg-gray-900/90 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              {producto.category.nombre}
+            </div>
+          )}
+          {enOferta && (
+            <div className="bg-red-600 shadow-lg text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest animate-pulse">
+              OFERTA
+            </div>
+          )}
         </div>
-
-        {/* Badge de stock bajo */}
-        {producto.stock <= 5 && (
-          <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full animate-pulse">
-            ¡Últimas {producto.stock}!
-          </div>
-        )}
       </div>
 
       {/* Info */}
       <div className="p-5 flex flex-col flex-grow gap-3 z-10 pointer-events-none">
         <div>
+          {producto.brand && (
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{producto.brand.nombre}</p>
+          )}
           <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
             {producto.nombre}
           </h3>
-          <p className="text-[11px] text-gray-400 font-mono tracking-wider uppercase">
-            SKU: {producto.sku}
-          </p>
+          <p className="text-[11px] text-gray-400 font-mono tracking-wider uppercase">SKU: {producto.sku}</p>
         </div>
 
-        {producto.descripcion && (
-          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-            {producto.descripcion}
-          </p>
-        )}
-
         <div className="mt-auto pt-2 flex flex-col gap-3 pointer-events-auto">
-          {/* Precio */}
-          <div className="flex items-baseline gap-1">
-            <span className="text-xs text-gray-400 font-semibold">S/</span>
-            <span className="text-2xl font-extrabold text-blue-600 tracking-tight">
-              {precio.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-            </span>
-          </div>
+          {/* Regla: Mostrar u Ocultar Precio */}
+          {mostrarPrecio ? (
+            <div className="flex flex-col">
+              {enOferta && precioOferta ? (
+                <>
+                  <span className="text-xs text-gray-400 line-through font-semibold">
+                    S/ {precioBase.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs text-red-600 font-semibold">S/</span>
+                    <span className="text-2xl font-black text-red-600 tracking-tight">
+                      {precioOferta.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-baseline gap-1 mt-4">
+                  <span className="text-xs text-gray-400 font-semibold">S/</span>
+                  <span className="text-2xl font-extrabold text-blue-600 tracking-tight">
+                    {precioBase.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-2.5 px-3 rounded-lg text-center mt-auto">
+              {/* Spacer */}
+            </div>
+          )}
 
-          {/* Botón Agregar al Carrito */}
-          <button
-            id={`add-to-cart-${producto.id}`}
-            onClick={handleAddToCart}
-            className={`
-              w-full py-2.5 px-4 rounded-xl font-bold text-sm transition-all duration-300
-              flex items-center justify-center gap-2 shadow-sm
-              ${
-                added
-                  ? 'bg-emerald-500 text-white scale-[0.98] shadow-emerald-200 shadow-md'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-blue-200 hover:shadow-md'
-              }
-            `}
-          >
-            {added ? (
-              <>
-                <Sparkles size={15} className="animate-spin" />
-                ¡Agregado!
-              </>
-            ) : (
-              <>
-                <ShoppingCart size={15} />
-                Agregar al carrito
-              </>
-            )}
-          </button>
+          {/* Botones de Acción */}
+          {mostrarPrecio ? (
+            <button
+              onClick={handleAddToCart}
+              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                added ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-gray-800 hover:shadow-lg'
+              }`}
+            >
+              {added ? <><Sparkles size={16} /> ¡Añadido!</> : <><ShoppingBag size={16} /> Añadir al carrito</>}
+            </button>
+          ) : (
+            <button
+              onClick={handleQuoteWhatsApp}
+              className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-emerald-500 text-white hover:bg-emerald-600 hover:shadow-lg transition-all"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+              </svg>
+              Cotizar Precio
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -228,403 +147,207 @@ function ProductCard({ producto }: { producto: Producto }) {
 }
 
 // ─────────────────────────────────────────────
-// Componente principal exportado: Catalog
+// Componente Principal: CatalogClient
 // ─────────────────────────────────────────────
 
-interface CatalogProps {
+interface CatalogClientProps {
   productos: Producto[];
   categorias: Categoria[];
-  banners: Banner[];
+  marcas: any[];
+  initialCategory?: string;
+  initialOffersOnly?: boolean;
 }
 
-export default function Catalog({ productos, categorias, banners }: CatalogProps) {
-  const [categoriaActiva, setCategoriaActiva] = useState<string>('todas');
-  const [busqueda, setBusqueda] = useState('');
+export default function CatalogClient({ productos, categorias, marcas, initialCategory, initialOffersOnly }: CatalogClientProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategory ? [initialCategory] : []);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [onlyOffers, setOnlyOffers] = useState(initialOffersOnly || false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  /* Filtrado del lado cliente (categoría + búsqueda) */
-  const productosFiltrados = productos.filter((p) => {
-    const matchCategoria =
-      categoriaActiva === 'todas' || p.category.id === categoriaActiva;
-    const matchBusqueda =
-      busqueda.trim() === '' ||
-      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.sku.toLowerCase().includes(busqueda.toLowerCase());
-    return matchCategoria && matchBusqueda;
-  });
+  // Toggle helpers
+  const toggleCategory = (id: string) => {
+    setSelectedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
+
+  const toggleBrand = (id: string) => {
+    setSelectedBrands(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
+  };
+
+  // Filtrado
+  const filteredProducts = useMemo(() => {
+    return productos.filter(p => {
+      // Búsqueda
+      const searchMatch = !searchTerm || 
+        p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.sku.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Categorías
+      const catMatch = selectedCategories.length === 0 || selectedCategories.includes(p.categoryId);
+      
+      // Marcas
+      const brandMatch = selectedBrands.length === 0 || (p.brandId && selectedBrands.includes(p.brandId));
+
+      // Ofertas
+      const offerMatch = !onlyOffers || p.enOferta;
+
+      return searchMatch && catMatch && brandMatch && offerMatch;
+    });
+  }, [productos, searchTerm, selectedCategories, selectedBrands, onlyOffers]);
 
   return (
-    <>
-      {/* ── Carrusel Dinámico (debajo del Navbar global) ── */}
-      <HeroCarousel banners={banners} />
+    <div className="bg-slate-50 min-h-screen">
+      
+      {/* Header del Catálogo */}
+      <div className="bg-slate-900 pt-16 pb-24 px-6 relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/40 via-transparent to-transparent"></div>
+        <div className="max-w-7xl mx-auto relative z-10 text-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
+            Catálogo de Productos
+          </h1>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            Encuentra exactamente lo que necesitas usando nuestros filtros avanzados.
+          </p>
+        </div>
+      </div>
 
-      {/* ── Catálogo ── */}
-      <main id="catalogo" className="bg-gray-50 py-20 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <FadeInSection>
-            <SectionTitle
-              title="NUESTRO CATÁLOGO"
-              subtitle="Explora nuestra amplia gama de productos y equipos tecnológicos con stock real y precios transparentes."
-            />
-          </FadeInSection>
+      <div className="max-w-7xl mx-auto px-6 -mt-10 relative z-20 pb-24">
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* Botón Filtros Mobile */}
+          <button 
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="lg:hidden w-full bg-white border border-slate-200 shadow-sm rounded-xl py-3 px-4 font-bold text-slate-800 flex items-center justify-center gap-2"
+          >
+            <SlidersHorizontal size={18} /> 
+            {showMobileFilters ? "Ocultar Filtros" : "Mostrar Filtros Avanzados"}
+          </button>
 
-          {/* Barra de búsqueda + filtros de categoría */}
-          <FadeInSection delay={100}>
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2">
-                <Store size={20} className="text-blue-600" />
-                <span className="font-bold text-gray-800">
-                  {productosFiltrados.length} producto
-                  {productosFiltrados.length !== 1 ? 's' : ''} disponible
-                  {productosFiltrados.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-
-              {/* Buscador */}
-              <div className="relative w-full sm:w-80">
-                <input
-                  id="product-search"
-                  type="search"
-                  placeholder="Buscar por nombre o SKU…"
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          {/* SIDEBAR (Filtros Izquierdos) */}
+          <aside className={`w-full lg:w-72 flex-shrink-0 space-y-6 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
+            
+            {/* Buscador */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-widest">Buscar</h3>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Nombre o SKU..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-medium"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.35-4.35" />
-                  </svg>
-                </span>
               </div>
             </div>
 
-            {/* Pills de categorías */}
-            <div className="flex flex-wrap gap-2 mb-10">
-              <button
-                id="filter-todas"
-                onClick={() => setCategoriaActiva('todas')}
-                className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300 ${
-                  categoriaActiva === 'todas'
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600 shadow-sm'
-                }`}
-              >
-                Todas
-              </button>
-              {categorias.map((cat) => (
-                <button
-                  key={cat.id}
-                  id={`filter-${cat.id}`}
-                  onClick={() => setCategoriaActiva(cat.id)}
-                  className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300 ${
-                    categoriaActiva === cat.id
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600 shadow-sm'
-                  }`}
-                >
-                  {cat.nombre}
-                </button>
-              ))}
+            {/* Ofertas Especiales */}
+            <div className="bg-gradient-to-br from-red-50 to-orange-50 p-5 rounded-2xl shadow-sm border border-red-100">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${onlyOffers ? 'bg-red-600' : 'bg-white border border-red-200 group-hover:border-red-400'}`}>
+                  {onlyOffers && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                </div>
+                <input type="checkbox" className="hidden" checked={onlyOffers} onChange={() => setOnlyOffers(!onlyOffers)} />
+                <span className="font-extrabold text-red-900">Ver Solo Ofertas 🔥</span>
+              </label>
             </div>
-          </FadeInSection>
 
-          {/* Grid de productos */}
-          {productosFiltrados.length === 0 ? (
-            <FadeInSection delay={200}>
-              <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
-                <ShoppingBag
-                  size={56}
-                  strokeWidth={1.5}
-                  className="text-gray-300"
-                />
-                <p className="font-bold text-lg text-gray-600">
-                  No hay productos que coincidan
+            {/* Categorías */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+                <Tag size={16} className="text-blue-500" /> Categorías
+              </h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                {categorias.map(cat => (
+                  <label key={cat.id} className="flex items-center gap-3 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCategories.includes(cat.id) ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
+                      {selectedCategories.includes(cat.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
+                    <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{cat.nombre}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Marcas */}
+            {marcas.length > 0 && (
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+                  <Star size={16} className="text-amber-500" /> Marcas
+                </h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                  {marcas.map(marca => (
+                    <label key={marca.id} className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedBrands.includes(marca.id) ? 'bg-amber-500 border-amber-500' : 'bg-white border-slate-300 group-hover:border-amber-400'}`}>
+                        {selectedBrands.includes(marca.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <input type="checkbox" className="hidden" checked={selectedBrands.includes(marca.id)} onChange={() => toggleBrand(marca.id)} />
+                      <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{marca.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </aside>
+
+          {/* RESULTADOS (Panel Derecho) */}
+          <main className="flex-1">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-6 flex justify-between items-center">
+              <span className="font-medium text-slate-500 text-sm">
+                Mostrando <strong className="text-slate-900">{filteredProducts.length}</strong> productos
+              </span>
+              {/* Optional Sorting here */}
+            </div>
+
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 border-dashed p-16 text-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <PackageOpen size={32} className="text-slate-400" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">No hay resultados</h3>
+                <p className="text-slate-500 max-w-md mx-auto">
+                  No pudimos encontrar productos que coincidan con los filtros seleccionados. Intenta quitar algunos filtros para ver más resultados.
                 </p>
-                <button
+                <button 
                   onClick={() => {
-                    setCategoriaActiva('todas');
-                    setBusqueda('');
+                    setSearchTerm("");
+                    setSelectedCategories([]);
+                    setSelectedBrands([]);
+                    setOnlyOffers(false);
                   }}
-                  className="text-blue-600 font-bold text-sm hover:underline mt-2"
+                  className="mt-6 px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
                 >
-                  Limpiar filtros de búsqueda
+                  Limpiar todos los filtros
                 </button>
               </div>
-            </FadeInSection>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {productosFiltrados.map((producto, idx) => (
-                <FadeInSection key={producto.id} delay={(idx % 4) * 100}>
-                  <ProductCard producto={producto} />
-                </FadeInSection>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* ── ¿Quiénes Somos? ── */}
-      <section
-        id="quienes-somos"
-        className="bg-white py-20 border-b border-gray-100 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <FadeInSection>
-            <SectionTitle
-              title="¿QUIÉNES SOMOS?"
-              subtitle="Repreguerra es un proveedor de tecnología y equipos con más de 10 años de trayectoria en el mercado peruano. Nos especializamos en ofrecer calidad garantizada."
-              icon={Star}
-            />
-          </FadeInSection>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-            {[
-              {
-                icon: Shield,
-                title: 'Garantía Real',
-                desc: 'Todos nuestros productos cuentan con garantía de fábrica y soporte post-venta. Tu compra está protegida.',
-                color: 'text-blue-600 bg-blue-50',
-                border: 'hover:border-blue-200 hover:shadow-blue-100',
-              },
-              {
-                icon: Truck,
-                title: 'Envío a Todo el País',
-                desc: 'Hacemos envíos a Lima y provincias a través de nuestras alianzas logísticas de confianza.',
-                color: 'text-emerald-600 bg-emerald-50',
-                border: 'hover:border-emerald-200 hover:shadow-emerald-100',
-              },
-              {
-                icon: HeadphonesIcon,
-                title: 'Soporte Dedicado',
-                desc: 'Nuestro equipo de atención al cliente está disponible para resolver cualquier duda antes y después de tu compra.',
-                color: 'text-violet-600 bg-violet-50',
-                border: 'hover:border-violet-200 hover:shadow-violet-100',
-              },
-            ].map(({ icon: Icon, title, desc, color, border }, idx) => (
-              <FadeInSection key={title} delay={idx * 150}>
-                <div
-                  className={`group p-8 rounded-3xl border border-gray-100 hover:shadow-xl transition-all duration-500 bg-white h-full ${border}`}
-                >
-                  <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${color} transition-transform group-hover:scale-110 duration-500 shadow-sm`}
-                  >
-                    <Icon size={26} strokeWidth={2} />
-                  </div>
-                  <h3 className="font-extrabold text-gray-900 text-xl mb-3">
-                    {title}
-                  </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
-                </div>
-              </FadeInSection>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Contacto y Ubicación ── */}
-      <section id="encuentranos" className="bg-gray-50 py-20 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <FadeInSection>
-            <SectionTitle
-              title="ENCUÉNTRANOS"
-              subtitle="Visítanos en nuestra tienda física o contáctanos por nuestros canales digitales."
-            />
-          </FadeInSection>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12 bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-xl">
-            {/* Mapa Interactivo */}
-            <FadeInSection delay={100}>
-              <div className="w-full h-80 lg:h-full min-h-[300px] rounded-2xl overflow-hidden bg-gray-100 relative group">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3901.890333202685!2d-77.06282862410317!3d-12.05101684209935!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9105c93a02796fa3%3A0x6e2f4f2f9b86000c!2sAv.%20Argentina%203093%2C%20Callao%2007001!5e0!3m2!1ses-419!2spe!4v1700000000000!5m2!1ses-419!2spe"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen={true}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="absolute inset-0 grayscale group-hover:grayscale-0 transition-all duration-700"
-                />
-              </div>
-            </FadeInSection>
-
-            {/* Info de contacto */}
-            <FadeInSection delay={200}>
-              <div className="flex flex-col justify-center space-y-6 p-4 sm:p-8">
-                <div className="flex items-start gap-5">
-                  <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                    <MapPin size={22} />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-gray-900 text-lg mb-1">
-                      Dirección Principal
-                    </h4>
-                    <p className="text-gray-500 text-sm leading-relaxed">
-                      Av. Argentina 3093, Carmen de la Legua Reynoso
-                      <br />
-                      Callao 07001, Perú
-                    </p>
-                  </div>
-                </div>
-
-                <div className="h-px w-full bg-gray-100" />
-
-                <div className="flex items-start gap-5">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                    <Clock size={22} />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-gray-900 text-lg mb-1">
-                      Horario de Atención
-                    </h4>
-                    <ul className="text-gray-500 text-sm leading-relaxed space-y-1">
-                      <li>
-                        <strong className="text-gray-700">Lunes a Viernes:</strong>{' '}
-                        9:00 AM - 6:00 PM
-                      </li>
-                      <li>
-                        <strong className="text-gray-700">Sábados:</strong> 9:00 AM -
-                        1:00 PM
-                      </li>
-                      <li>
-                        <strong className="text-gray-700">Domingos:</strong> Cerrado
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="h-px w-full bg-gray-100" />
-
-                <div className="flex items-start gap-5">
-                  <div className="w-12 h-12 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
-                    <Mail size={22} />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-gray-900 text-lg mb-1">
-                      Contacto Directo
-                    </h4>
-                    <p className="text-gray-500 text-sm leading-relaxed">
-                      Escríbenos para cotizaciones corporativas:
-                      <br />
-                      <a
-                        href="mailto:ventas@repreguerra.pe"
-                        className="text-blue-600 font-bold hover:underline mt-1 inline-block"
-                      >
-                        ventas@repreguerra.pe
-                      </a>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </FadeInSection>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer Corporativo ── */}
-      <footer className="bg-gray-950 text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
-            {/* Marca */}
-            <div>
-              <Link
-                href="/"
-                className="text-3xl font-extrabold tracking-widest uppercase text-white hover:text-blue-400 transition inline-block mb-4"
-              >
-                Repreguerra
-              </Link>
-              <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-                Proveedor líder en tecnología y equipos para empresas y
-                particulares en el Perú. Garantía, confianza y rapidez.
-              </p>
-            </div>
-
-            {/* Links rápidos */}
-            <div>
-              <h3 className="font-extrabold text-white text-sm uppercase tracking-widest mb-6">
-                Navegación Rápida
-              </h3>
-              <ul className="space-y-4">
-                {[
-                  { href: '#catalogo', label: 'Catálogo de Productos' },
-                  { href: '/checkout', label: 'Procesar Pago' },
-                  { href: '/mis-pedidos', label: 'Seguimiento de Pedidos' },
-                  { href: '#quienes-somos', label: 'Nuestra Historia' },
-                ].map(({ href, label }) => (
-                  <li key={label}>
-                    <Link
-                      href={href}
-                      className="text-gray-400 hover:text-white text-sm transition flex items-center gap-2 group w-fit"
-                    >
-                      <ChevronRight
-                        size={14}
-                        className="text-blue-500 group-hover:translate-x-1 transition-transform"
-                      />
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Redes */}
-            <div>
-              <h3 className="font-extrabold text-white text-sm uppercase tracking-widest mb-6">
-                Síguenos
-              </h3>
-              <div className="flex gap-4">
-                {['f', 'in', 'IG', 'X'].map((social) => (
-                  <a
-                    key={social}
-                    href="#"
-                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-600 flex items-center justify-center transition-all hover:scale-110 shadow-lg text-sm font-bold"
-                  >
-                    {social}
-                  </a>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map(producto => (
+                  <ProductCard key={producto.id} producto={producto} />
                 ))}
               </div>
-            </div>
-          </div>
+            )}
+          </main>
 
-          <div className="border-t border-white/10 pt-8 text-center sm:flex sm:justify-between sm:text-left text-gray-500 text-xs">
-            <p>
-              © {new Date().getFullYear()} Repreguerra SAC. Todos los derechos
-              reservados.
-            </p>
-            <p className="mt-2 sm:mt-0">Desarrollado para la excelencia.</p>
-          </div>
         </div>
-      </footer>
-
-      {/* ── Botón flotante de WhatsApp ── */}
-      <a
-        href="https://wa.me/51999999999?text=Hola%2C%20me%20interesa%20un%20producto%20de%20Repreguerra"
-        target="_blank"
-        rel="noopener noreferrer"
-        id="whatsapp-float-btn"
-        aria-label="Contactar por WhatsApp"
-        className="fixed bottom-6 right-6 z-30 w-16 h-16 rounded-full bg-[#25D366] hover:bg-[#20b859] shadow-2xl shadow-green-900/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group"
-      >
-        <span className="absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-40 animate-ping" />
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          className="w-8 h-8 fill-white relative z-10"
-          aria-hidden="true"
-        >
-          <path d="M16.003 2.667C8.638 2.667 2.667 8.638 2.667 16c0 2.346.635 4.618 1.839 6.607L2.667 29.333l6.908-1.806A13.267 13.267 0 0016.003 29.333C23.365 29.333 29.333 23.362 29.333 16S23.365 2.667 16.003 2.667zm0 24.267a11 11 0 01-5.591-1.522l-.4-.239-4.098 1.072 1.092-3.993-.261-.41A10.96 10.96 0 015.002 16c0-6.075 4.925-11 11.001-11S27.003 9.925 27.003 16s-4.925 11-11 11zm6.027-8.224c-.33-.166-1.952-.962-2.255-1.072-.303-.11-.524-.166-.745.166-.22.332-.857 1.072-1.05 1.293-.194.22-.387.248-.717.083-.33-.166-1.393-.513-2.653-1.636-.98-.873-1.643-1.95-1.835-2.28-.193-.332-.02-.511.145-.677.15-.149.33-.387.495-.58.166-.194.22-.332.33-.553.11-.22.055-.415-.028-.58-.083-.166-.745-1.795-1.02-2.458-.27-.645-.544-.557-.745-.567l-.635-.011c-.22 0-.579.082-.883.415-.303.332-1.158 1.133-1.158 2.762 0 1.63 1.186 3.206 1.352 3.427.165.22 2.334 3.562 5.657 4.995.79.342 1.406.546 1.887.699.792.252 1.514.217 2.085.132.636-.094 1.952-.798 2.228-1.57.276-.773.276-1.434.194-1.572-.083-.138-.303-.22-.634-.387z" />
-        </svg>
-      </a>
-    </>
+      </div>
+      
+      {/* Estilos para custom scrollbar en el sidebar */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+        }
+      `}} />
+    </div>
   );
 }

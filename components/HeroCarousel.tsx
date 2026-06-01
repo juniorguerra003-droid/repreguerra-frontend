@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { siteConfig } from '@/lib/constants';
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -48,7 +49,7 @@ function StaticHero() {
         </span>
 
         <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-5 leading-none">
-          Repreguerra
+          {siteConfig.name}
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mt-2">
             Tu Tienda de Confianza
           </span>

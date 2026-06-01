@@ -18,12 +18,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { siteConfig } from '@/lib/constants';
 import {
   ShoppingCart,
   Menu,
   X,
   User,
   Package,
+  Heart,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -37,7 +39,7 @@ import CartDrawer from '@/components/CartDrawer';
 
 const NAV_LINKS = [
   { href: '/', label: 'Inicio' },
-  { href: '/#catalogo', label: 'Catálogo' },
+  { href: '/catalogo', label: 'Catálogo' },
   { href: '/#quienes-somos', label: 'Quiénes Somos' },
   { href: '/#encuentranos', label: 'Contacto' },
 ] as const;
@@ -88,21 +90,27 @@ export default function Navbar() {
             {/* ── Logo ── */}
             <Link
               href="/"
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-3 group"
               id="navbar-logo"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-200/60 group-hover:shadow-blue-300/80 transition-shadow">
-                <span className="text-white font-black text-sm">R</span>
+              <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg shadow-blue-200/60 group-hover:shadow-blue-300/80 transition-shadow">
+                <img 
+                  src="https://graph.facebook.com/repreguerra.pe/picture?type=large" 
+                  alt={siteConfig.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <span className="text-xl font-extrabold tracking-tight text-gray-900 group-hover:text-blue-600 transition-colors hidden sm:block">
-                Repreguerra
+                {siteConfig.name}
               </span>
             </Link>
 
             {/* ── Nav links (desktop) ── */}
             <nav className="hidden md:flex items-center gap-1" id="navbar-desktop-nav">
               {NAV_LINKS.map(({ href, label }) => {
-                const isActive = pathname === href || (href !== '/' && pathname.startsWith(href.split('#')[0]));
+                const isActive = href === '/' 
+                  ? pathname === '/' 
+                  : (!href.startsWith('/#') && pathname.startsWith(href));
                 return (
                   <Link
                     key={label}
@@ -126,33 +134,50 @@ export default function Navbar() {
               {isHydrated && (
                 <div className="hidden md:flex items-center gap-2">
                   {user ? (
-                    <>
-                      <span className="text-sm text-gray-500 font-medium mr-1">
-                        Hola, <strong className="text-gray-800">{user.nombre.split(' ')[0]}</strong>
-                      </span>
-                      <Link
-                        href="/perfil"
-                        className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-50 text-sm font-semibold transition"
-                      >
-                        <User size={15} />
-                        Mi Perfil
-                      </Link>
-                      <Link
-                        href="/mis-pedidos"
-                        id="nav-mis-pedidos"
-                        className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-50 text-sm font-semibold transition"
-                      >
-                        <Package size={15} />
-                        Mis Pedidos
-                      </Link>
-                      <button
-                        id="nav-logout-btn"
-                        onClick={logout}
-                        className="flex items-center gap-1.5 text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg hover:bg-red-50 text-sm font-semibold transition"
-                      >
-                        <LogOut size={15} />
-                      </button>
-                    </>
+                      <div className="relative group cursor-pointer py-2">
+                        <div className="flex items-center gap-2 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition">
+                          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                            {user.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-gray-700 font-medium hidden lg:block">
+                            Hola, <strong className="text-gray-900">{user.nombre.split(' ')[0]}</strong>
+                          </span>
+                        </div>
+                        
+                        <div className="absolute top-full right-0 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
+                          <Link
+                            href="/perfil"
+                            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 px-3 py-2.5 rounded-xl hover:bg-blue-50 text-sm font-semibold transition"
+                          >
+                            <User size={16} />
+                            Mi Perfil
+                          </Link>
+                          <Link
+                            href="/mis-pedidos"
+                            id="nav-mis-pedidos"
+                            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 px-3 py-2.5 rounded-xl hover:bg-blue-50 text-sm font-semibold transition"
+                          >
+                            <Package size={16} />
+                            Mis Pedidos
+                          </Link>
+                          <Link
+                            href="/favoritos"
+                            className="flex items-center gap-2 text-gray-600 hover:text-red-500 px-3 py-2.5 rounded-xl hover:bg-red-50 text-sm font-semibold transition"
+                          >
+                            <Heart size={16} />
+                            Favoritos
+                          </Link>
+                          <div className="h-px w-full bg-gray-100 my-1" />
+                          <button
+                            id="nav-logout-btn"
+                            onClick={logout}
+                            className="w-full flex items-center gap-2 text-gray-500 hover:text-red-600 px-3 py-2.5 rounded-xl hover:bg-red-50 text-sm font-semibold transition"
+                          >
+                            <LogOut size={16} />
+                            Cerrar Sesión
+                          </button>
+                        </div>
+                      </div>
                   ) : (
                     <Link
                       href="/login"
@@ -203,16 +228,23 @@ export default function Navbar() {
         >
           <div className="px-4 pb-5 pt-2 border-t border-gray-100 bg-white/95 backdrop-blur-xl space-y-1">
             {/* Nav links */}
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition"
-              >
-                {label}
-                <ChevronRight size={16} className="text-gray-300" />
-              </Link>
-            ))}
+            {NAV_LINKS.map(({ href, label }) => {
+              const isActive = href === '/' 
+                ? pathname === '/' 
+                : (!href.startsWith('/#') && pathname.startsWith(href));
+              return (
+                <Link
+                  key={label}
+                  href={href}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                    isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                  }`}
+                >
+                  {label}
+                  <ChevronRight size={16} className={isActive ? 'text-blue-400' : 'text-gray-300'} />
+                </Link>
+              );
+            })}
 
             {/* Divider */}
             <div className="h-px bg-gray-100 my-2" />
@@ -237,6 +269,13 @@ export default function Navbar() {
                   >
                     <Package size={17} className="text-blue-500" />
                     Mis Pedidos
+                  </Link>
+                  <Link
+                    href="/favoritos"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:bg-red-50 hover:text-red-500 transition"
+                  >
+                    <Heart size={17} className="text-red-500" />
+                    Favoritos
                   </Link>
                   <button
                     onClick={logout}

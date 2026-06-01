@@ -15,6 +15,7 @@ import {
   DollarSign,
   Activity,
 } from "lucide-react";
+import AdminCharts from "@/components/AdminCharts";
 
 interface Producto {
   id: string;
@@ -344,6 +345,17 @@ export default function AdminDashboard() {
               trend={stats.bajoStock > 0 ? "Atención" : undefined}
             />
           </div>
+        </section>
+
+        {/* ── Analíticas Visuales ── */}
+        <section>
+          <div className="flex items-center gap-2 mb-5">
+            <BarChart3 size={18} className="text-indigo-500" />
+            <h2 className="text-sm font-extrabold text-slate-500 uppercase tracking-[0.12em]">
+              Analíticas de Rendimiento
+            </h2>
+          </div>
+          <AdminCharts />
         </section>
 
         {/* ── Tabla de alertas ── */}

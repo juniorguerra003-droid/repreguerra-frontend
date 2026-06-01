@@ -4,6 +4,8 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
+import WhatsAppWidget from "@/components/WhatsAppWidget";
+import { siteConfig } from "@/lib/constants";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,21 +19,21 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Repreguerra',
-    default: 'Repreguerra – Tienda Oficial',
+    template: `%s | ${siteConfig.name}`,
+    default: `${siteConfig.name} – Tienda Oficial`,
   },
-  description: "Encuentra los mejores equipos y tecnología en la tienda oficial de Repreguerra. Garantía real y envíos a todo el Perú.",
+  description: `Encuentra los mejores equipos y tecnología en la tienda oficial de ${siteConfig.name}. Garantía real y envíos a todo el Perú.`,
   openGraph: {
-    title: 'Repreguerra – Tienda Oficial',
+    title: `${siteConfig.name} – Tienda Oficial`,
     description: 'Equipos y tecnología con garantía real y envío a todo el Perú.',
     url: 'https://repreguerra.pe', // Replace with real domain when deployed
-    siteName: 'Repreguerra',
+    siteName: siteConfig.name,
     images: [
       {
         url: '/og-image.jpg', // Should be added to public/ later
         width: 1200,
         height: 630,
-        alt: 'Repreguerra – Tienda Oficial',
+        alt: `${siteConfig.name} – Tienda Oficial`,
       },
     ],
     locale: 'es_PE',
@@ -58,6 +60,7 @@ export default function RootLayout({
           <CartProvider>
             <Navbar />
             {children}
+            <WhatsAppWidget />
           </CartProvider>
         </AuthProvider>
       </body>
